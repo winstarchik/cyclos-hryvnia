@@ -6,27 +6,18 @@ import {
   type VersionedTransactionResponse,
 } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { TOKENS } from "@/constants/tokens";
+import type { Transaction } from "@/types";
 
 const MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com";
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
 const DEFAULT_TRANSACTION_LIMIT = 50;
-
-export type TransactionType = "send" | "receive" | "swap";
-export type TransactionStatus = "success" | "failed";
+const SOL_PRICE_USD_FALLBACK = 180;
 
 export interface TokenAccount {
   pubkey: string;
   mint: string;
   balance: number;
-}
-
-export interface Transaction {
-  hash: string;
-  timestamp: number;
-  fee: number;
-  amount: number;
-  type: TransactionType;
-  status: TransactionStatus;
 }
 
 type ParsedTokenAccountInfo = {
@@ -146,11 +137,14 @@ export async function getAllTokenAccounts(
 }
 
 /**
- * Fetch recent Solana transactions for a wallet.
+ * Fetch recent Solana transactions for a wallet address.
  *
  * RPC rate limiting considerations:
  * this fetches full transaction details one-by-one after signatures are loaded.
  * A production history view should add caching and request throttling.
+ *
+ * All RPC calls are wrapped so an invalid address or individual transaction
+ * failure returns a safe empty/default result instead of breaking components.
  */
 export async function getTransactionHistory(
   address: string,
@@ -169,7 +163,9 @@ export async function getTransactionHistory(
           commitment: "confirmed",
           maxSupportedTransactionVersion: 0,
         });
-        const parsed = transaction ? parseTransaction(transaction) : null;
+        const parsed = transaction
+          ? parseTransaction(transaction, address)
+          : null;
 
         if (parsed) {
           transactions.push(parsed);
@@ -189,29 +185,42 @@ export async function getTransactionHistory(
 /**
  * Parse a Solana transaction into the simplified app history shape.
  *
- * Token transfer parsing in Phase 3.
+ * Lamports to SOL conversion: Solana fees are reported in lamports, so we
+ * divide by 1,000,000,000 (LAMPORTS_PER_SOL) to display SOL.
+ *
+ * Fee-based parsing is simplified for the MVP: every transaction is treated as
+ * a "send" with the fee as the displayed amount.
+ *
+ * TODO: Implement SPL token transfer parsing in Phase 4.
  */
 export function parseTransaction(
   tx: VersionedTransactionResponse,
+  userAddress: string,
 ): Transaction | null {
   try {
     const hash = tx.transaction.signatures[0];
-    if (!hash || !tx.meta) return null;
+    if (!hash || !tx.meta || typeof tx.blockTime !== "number") return null;
 
-    // TODO: Implement token transfer parsing.
-    const fee = tx.meta.fee / LAMPORTS_PER_SOL;
+    const amount = tx.meta.fee / LAMPORTS_PER_SOL;
+    const timestamp = tx.blockTime * 1_000;
 
     return {
+      id: hash,
       hash,
-      timestamp: tx.blockTime ? tx.blockTime * 1_000 : 0,
-      fee,
-      amount: fee,
+      from: userAddress,
+      to: userAddress,
+      token: {
+        ...TOKENS.SOL,
+        price: SOL_PRICE_USD_FALLBACK,
+      },
+      amount,
       type: "send",
+      timestamp,
       status: tx.meta.err ? "failed" : "success",
+      valueUSD: amount * SOL_PRICE_USD_FALLBACK,
     };
   } catch (error) {
     logDevError("Failed to parse transaction", error);
     return null;
   }
 }
-

@@ -66,16 +66,16 @@ export interface Transaction {
   to: string;
   /** Token involved in the transaction. */
   token: Token;
-  /** Amount transferred/swapped in token units as a decimal string. */
-  amount: string;
+  /** Amount transferred/swapped in token units. */
+  amount: number;
   /** Transaction type (send/receive/swap). */
   type: TransactionType;
   /** Unix timestamp in milliseconds. */
   timestamp: number;
   /** Execution status. */
   status: TransactionStatus;
-  /** USD value at time of transaction, if known. */
-  valueUSD: number | null;
+  /** USD value at time of transaction. */
+  valueUSD: number;
 }
 
 /**
