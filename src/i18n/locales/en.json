@@ -38,7 +38,7 @@
     "copyAddress": "Copy address"
   },
   "send": {
-    "title": "Send",
+    "title": "Send Crypto",
     "recipientAddress": "Recipient address",
     "selectToken": "Select token",
     "amount": "Amount",

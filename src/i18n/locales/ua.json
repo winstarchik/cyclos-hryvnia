@@ -38,7 +38,7 @@
     "copyAddress": "Скопіювати адресу"
   },
   "send": {
-    "title": "Надіслати",
+    "title": "Надіслати крипто",
     "recipientAddress": "Адреса отримувача",
     "selectToken": "Виберіть токен",
     "amount": "Сума",
