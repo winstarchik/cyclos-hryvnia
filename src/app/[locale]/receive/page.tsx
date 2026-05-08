@@ -86,7 +86,7 @@ export default function ReceivePage() {
           onClick={handleCopy}
           type="button"
         >
-          {copied ? `✓ ${t("common.copied")}` : t("receive.copyAddress")}
+          {copied ? `\u2713 ${t("common.copied")}` : t("receive.copyAddress")}
         </button>
       </div>
     </main>

@@ -2,31 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 export function BottomNav() {
+  const t = useTranslations("nav");
   const pathname = usePathname();
   const locale = pathname.split("/")[1] || "en";
 
-  const ROUTES = [
-    { href: "/wallet", label: "Wallet", icon: "💰" },
-    { href: "/history", label: "History", icon: "📜" },
-    { href: "/receive", label: "Receive", icon: "⬇️" },
-    { href: "/send", label: "Send", icon: "⬆️" },
+  const routes = [
+    { href: "/wallet", label: t("wallet"), icon: "\u{1F4B0}" },
+    { href: "/history", label: t("history"), icon: "\u{1F4DC}" },
+    { href: "/receive", label: t("receive"), icon: "\u2B07\uFE0F" },
+    { href: "/send", label: t("send"), icon: "\u2B06\uFE0F" },
   ];
 
-  const isAppRoute = ROUTES.some((route) => pathname.includes(route.href));
+  const isAppRoute = routes.some((route) => pathname.includes(route.href));
 
   if (!isAppRoute) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-dark-800 bg-dark-950/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md">
       <div className="mx-auto flex max-w-md items-center justify-around gap-2">
-        {ROUTES.map((route) => {
+        {routes.map((route) => {
           const isActive = pathname.includes(route.href);
 
           return (
             <Link
               aria-current={isActive ? "page" : undefined}
+              aria-label={route.label}
               className="flex-1"
               href={`/${locale}${route.href}`}
               key={route.href}

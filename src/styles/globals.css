@@ -70,11 +70,6 @@
     background: var(--color-dark-700);
   }
 
-  @media (max-width: 640px) {
-    html {
-      font-size: 15px;
-    }
-  }
 }
 
 @layer components {

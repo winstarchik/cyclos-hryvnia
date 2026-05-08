@@ -49,5 +49,11 @@
     "amount": "Amount",
     "button": "Send",
     "comingSoon": "Send functionality coming in Phase 4!"
+  },
+  "nav": {
+    "wallet": "Wallet",
+    "history": "History",
+    "receive": "Receive",
+    "send": "Send"
   }
 }

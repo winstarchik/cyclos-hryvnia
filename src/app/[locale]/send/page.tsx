@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
@@ -37,6 +37,14 @@ export default function SendPage() {
   const canSend =
     connected && Boolean(recipient.trim()) && Boolean(amount) && selectedToken;
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!canSend) return;
+
+    window.alert(t("send.comingSoon"));
+  }
+
   return (
     <main className="min-h-screen overflow-x-hidden bg-dark-950 pb-[calc(5rem+env(safe-area-inset-bottom))] text-white">
       <div className="mx-auto flex w-full max-w-2xl flex-col px-6 pt-6">
@@ -44,7 +52,7 @@ export default function SendPage() {
           {t("send.title")}
         </h1>
 
-        <div className="animate-fade-in-up space-y-6">
+        <form className="animate-fade-in-up space-y-6" onSubmit={handleSubmit}>
           <div>
             <label
               className="mb-2 block text-sm font-medium text-gray-300"
@@ -53,10 +61,13 @@ export default function SendPage() {
               {t("send.recipientAddress")}
             </label>
             <input
+              autoCapitalize="none"
+              autoComplete="off"
               className="min-h-12 w-full rounded-xl border border-dark-800 bg-dark-900 px-4 py-3 text-white placeholder-gray-600 transition focus:border-accent-500 focus:outline-none"
               id="recipient"
               onChange={(event) => setRecipient(event.target.value)}
               placeholder="Enter address or domain"
+              spellCheck={false}
               type="text"
               value={recipient}
             />
@@ -103,9 +114,11 @@ export default function SendPage() {
             <input
               className="min-h-12 w-full rounded-xl border border-dark-800 bg-dark-900 px-4 py-3 text-white placeholder-gray-600 transition focus:border-accent-500 focus:outline-none"
               id="amount"
+              inputMode="decimal"
               min="0"
               onChange={(event) => setAmount(event.target.value)}
               placeholder="0.00"
+              step="any"
               type="number"
               value={amount}
             />
@@ -114,12 +127,11 @@ export default function SendPage() {
           <button
             className="mt-8 min-h-12 w-full rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 py-4 font-semibold text-white transition hover:from-accent-600 hover:to-accent-700 focus:outline-none focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!canSend}
-            onClick={() => window.alert(t("send.comingSoon"))}
-            type="button"
+            type="submit"
           >
             {t("send.button")}
           </button>
-        </div>
+        </form>
       </div>
     </main>
   );
