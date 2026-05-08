@@ -18,10 +18,14 @@
     "termsDisclaimer": "By continuing, you agree to the Terms and Privacy Policy."
   },
   "wallet": {
-    "title": "Wallet",
+    "title": "Your Wallet",
+    "totalBalance": "Total balance",
+    "connectedAddress": "Connected: {address}",
     "receive": "Receive",
     "send": "Send",
-    "assets": "Assets"
+    "assets": "Your Assets",
+    "emptyAssets": "No assets yet. Connect a wallet or refresh after your first deposit.",
+    "lastUpdated": "Updated {time}"
   },
   "history": {
     "title": "History",
