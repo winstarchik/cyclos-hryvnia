@@ -36,10 +36,10 @@ export interface Token {
 export interface Balance {
   /** Token metadata. */
   token: Token;
-  /** Raw amount in token units as a decimal string (UI-safe). */
-  amount: string;
-  /** USD valuation of `amount` at `token.price`, if available. */
-  valueUSD: number | null;
+  /** Amount in token units after applying token decimals. */
+  amount: number;
+  /** USD valuation of `amount` at `token.price`. */
+  valueUSD: number;
 }
 
 /**

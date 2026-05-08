@@ -1,6 +1,20 @@
+import { PublicKey } from "@solana/web3.js";
 import { create } from "zustand";
-import type { Balance, Token } from "@/types";
+import { TOKENS } from "@/constants/tokens";
+import { getAllTokenAccounts, getSOLBalance } from "@/lib/solana";
 import { useWalletStore } from "@/stores/walletStore";
+import type { Balance, Token } from "@/types";
+
+const CACHE_DURATION_MS = 30_000;
+
+const TOKEN_PRICES_USD: Record<string, number> = {
+  SOL: 150,
+  USDC: 1,
+  cUAH: 0.024,
+  WBTC: 65_000,
+};
+
+let cachedAddress: string | null = null;
 
 /**
  * Balance store state.
@@ -8,7 +22,9 @@ import { useWalletStore } from "@/stores/walletStore";
 export interface BalanceStoreState {
   balances: Balance[];
   loading: boolean;
+  error: string | null;
   lastUpdated: number | null;
+  selectedCurrency: "USD" | "EUR";
 }
 
 /**
@@ -16,22 +32,24 @@ export interface BalanceStoreState {
  */
 export interface BalanceStoreActions {
   /**
-   * Fetch balances for a given address.
-   *
-   * Note: Network implementation is a placeholder for PHASE 0. We will wire it
-   * to Solana RPC + SPL Token accounts in the Solana phase.
+   * Fetch balances for a given wallet address.
    */
   fetchBalances: (address: string) => Promise<void>;
 
   /**
-   * Get cached balance by token.
+   * Get cached balance by token symbol.
    */
-  getBalance: (token: Token) => Balance | undefined;
+  getBalance: (symbol: string) => Balance | undefined;
+
+  /**
+   * Get total portfolio value in USD.
+   */
+  getTotalUSD: () => number;
 
   /**
    * Clears cached balances.
    */
-  clear: () => void;
+  clearBalances: () => void;
 }
 
 export type BalanceStore = BalanceStoreState & BalanceStoreActions;
@@ -39,34 +57,119 @@ export type BalanceStore = BalanceStoreState & BalanceStoreActions;
 const initialState: BalanceStoreState = {
   balances: [],
   loading: false,
+  error: null,
   lastUpdated: null,
+  selectedCurrency: "USD",
 };
+
+function getTokenPriceUSD(symbol: string): number {
+  // Token prices stubbed - integrate Jupiter API in Phase 2.
+  return TOKEN_PRICES_USD[symbol] ?? 0;
+}
+
+function createBalance(token: Token, amount: number): Balance {
+  const priceUSD = getTokenPriceUSD(token.symbol);
+
+  return {
+    token: {
+      ...token,
+      price: priceUSD,
+    },
+    amount,
+    // Converts all to USD for display.
+    valueUSD: amount * priceUSD,
+  };
+}
+
+function getTokenByMint(mint: string): Token {
+  const token = Object.values(TOKENS).find((item) => item.address === mint);
+
+  if (token) {
+    return { ...token };
+  }
+
+  return {
+    address: mint,
+    symbol: "SPL",
+    name: "SPL Token",
+    decimals: 0,
+    chain: "solana",
+    logo: null,
+    price: null,
+  };
+}
 
 export const useBalanceStore = create<BalanceStore>()((set, get) => ({
   ...initialState,
 
   fetchBalances: async (address) => {
-    set({ loading: true });
+    const { lastUpdated, loading } = get();
+    const now = Date.now();
+
+    // Cache duration: 30 seconds.
+    if (
+      cachedAddress === address &&
+      lastUpdated !== null &&
+      now - lastUpdated < CACHE_DURATION_MS
+    ) {
+      return;
+    }
+
+    if (loading) {
+      return;
+    }
+
+    set({ loading: true, error: null });
+
     try {
-      // Placeholder: clear balances for now; real fetch will populate.
-      // We still update timestamps to support UI refresh state.
-      void address;
-      set({ balances: [], lastUpdated: Date.now() });
-    } finally {
-      set({ loading: false });
+      new PublicKey(address);
+
+      const [solAmount, tokenAccounts] = await Promise.all([
+        getSOLBalance(address),
+        getAllTokenAccounts(address),
+      ]);
+
+      const balances = [
+        createBalance({ ...TOKENS.SOL }, solAmount),
+        ...tokenAccounts.map((account) =>
+          createBalance(getTokenByMint(account.mint), account.balance),
+        ),
+      ];
+
+      cachedAddress = address;
+      set({
+        balances,
+        loading: false,
+        error: null,
+        lastUpdated: Date.now(),
+      });
+    } catch {
+      set({
+        loading: false,
+        error: "Unable to refresh balances. Please check your wallet and try again.",
+      });
     }
   },
 
-  getBalance: (token) =>
-    get().balances.find((b) => b.token.address === token.address),
+  getBalance: (symbol) =>
+    get().balances.find(
+      (balance) =>
+        balance.token.symbol.toLowerCase() === symbol.trim().toLowerCase(),
+    ),
 
-  clear: () => set({ balances: [], lastUpdated: null, loading: false }),
+  getTotalUSD: () =>
+    get().balances.reduce((total, balance) => total + balance.valueUSD, 0),
+
+  clearBalances: () => {
+    cachedAddress = null;
+    set({ balances: [], lastUpdated: null, error: null, loading: false });
+  },
 }));
 
 // Auto-clear balances when wallet disconnects.
 useWalletStore.subscribe((state, prevState) => {
   if (prevState.connected && !state.connected) {
-    useBalanceStore.getState().clear();
+    useBalanceStore.getState().clearBalances();
   }
 });
 
