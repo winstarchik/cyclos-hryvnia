@@ -9,6 +9,8 @@
   },
   "dependencies": {
     "@magic-ext/solana": "^30.6.0",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
     "@telegram-apps/sdk": "^3.11.8",
     "@telegram-apps/sdk-react": "^3.3.9",
     "framer-motion": "^12.38.0",
