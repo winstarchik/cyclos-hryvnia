@@ -1,0 +1,10 @@
+{
+  "name": "Cyclos Hryvnia",
+  "short_name": "Cyclos",
+  "start_url": "/en",
+  "display": "standalone",
+  "background_color": "#050712",
+  "theme_color": "#050712",
+  "icons": []
+}
+

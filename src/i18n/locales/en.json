@@ -1,0 +1,39 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "copied": "Copied",
+    "or": "or"
+  },
+  "onboarding": {
+    "subtitle": "Connect your wallet to start using Cyclos Hryvnia.",
+    "email": "Email",
+    "continueButton": "Continue",
+    "connectPhantom": "Connect Phantom",
+    "termsDisclaimer": "By continuing, you agree to the Terms and Privacy Policy."
+  },
+  "wallet": {
+    "title": "Wallet",
+    "receive": "Receive",
+    "send": "Send",
+    "assets": "Assets"
+  },
+  "history": {
+    "title": "History",
+    "empty": "No transactions yet."
+  },
+  "receive": {
+    "title": "Receive",
+    "subtitle": "Share your address to receive funds.",
+    "walletAddress": "Wallet address",
+    "copyAddress": "Copy address"
+  },
+  "send": {
+    "title": "Send",
+    "recipientAddress": "Recipient address",
+    "selectToken": "Select token",
+    "amount": "Amount",
+    "button": "Send",
+    "comingSoon": "Coming soon"
+  }
+}
+
