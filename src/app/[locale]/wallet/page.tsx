@@ -1,11 +1,16 @@
 "use client";
 
-import Link from "next/link";
+import { lazy, Suspense } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { BalanceCard } from "@/components/wallet/BalanceCard";
-import { TokenList } from "@/components/wallet/TokenList";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
+
+const TokenList = lazy(() =>
+  import("@/components/wallet/TokenList").then((mod) => ({
+    default: mod.TokenList,
+  })),
+);
 
 function TokenListSkeleton() {
   return (
@@ -44,18 +49,18 @@ export default function WalletPage() {
           <BalanceCard address={address} totalValueUSD={totalValueUSD} />
 
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <Link
+            <a
               className="flex h-12 items-center justify-center rounded-2xl bg-accent-500 px-4 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 transition hover:bg-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-400/60"
               href={`/${locale}/receive`}
             >
               {t("receive")}
-            </Link>
-            <Link
+            </a>
+            <a
               className="flex h-12 items-center justify-center rounded-2xl border border-dark-700 bg-dark-900 px-4 text-sm font-semibold text-white transition hover:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-400/60"
               href={`/${locale}/send`}
             >
               {t("send")}
-            </Link>
+            </a>
           </div>
         </div>
       </header>
@@ -87,7 +92,9 @@ export default function WalletPage() {
         ) : null}
 
         {!loading && balances.length > 0 ? (
-          <TokenList balances={balances} />
+          <Suspense fallback={<TokenListSkeleton />}>
+            <TokenList balances={balances} />
+          </Suspense>
         ) : null}
       </section>
     </main>

@@ -1,9 +1,32 @@
 "use client";
 
-import { formatDistanceToNow } from "date-fns";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTransactions } from "@/hooks/useTransactions";
 import type { Transaction } from "@/types";
+
+function formatRelativeTime(timestamp: number, locale: string): string {
+  const diffSeconds = Math.round((timestamp - Date.now()) / 1000);
+  const absoluteSeconds = Math.abs(diffSeconds);
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+
+  const ranges: Array<{
+    limit: number;
+    divisor: number;
+    unit: Intl.RelativeTimeFormatUnit;
+  }> = [
+    { limit: 60, divisor: 1, unit: "second" },
+    { limit: 60 * 60, divisor: 60, unit: "minute" },
+    { limit: 60 * 60 * 24, divisor: 60 * 60, unit: "hour" },
+    { limit: 60 * 60 * 24 * 30, divisor: 60 * 60 * 24, unit: "day" },
+    { limit: 60 * 60 * 24 * 365, divisor: 60 * 60 * 24 * 30, unit: "month" },
+  ];
+
+  const range =
+    ranges.find((item) => absoluteSeconds < item.limit) ??
+    ({ divisor: 60 * 60 * 24 * 365, unit: "year" } as const);
+
+  return formatter.format(Math.round(diffSeconds / range.divisor), range.unit);
+}
 
 function formatAmount(transaction: Transaction): string {
   const prefix = transaction.type === "receive" ? "+" : "-";
@@ -41,9 +64,11 @@ function TransactionHistorySkeleton() {
 
 function TransactionItem({
   index,
+  locale,
   transaction,
 }: {
   index: number;
+  locale: string;
   transaction: Transaction;
 }) {
   const isReceive = transaction.type === "receive";
@@ -68,7 +93,7 @@ function TransactionItem({
             {transaction.type}
           </p>
           <p className="truncate text-xs text-gray-500">
-            {formatDistanceToNow(transaction.timestamp, { addSuffix: true })}
+            {formatRelativeTime(transaction.timestamp, locale)}
           </p>
         </div>
       </div>
@@ -91,6 +116,7 @@ function TransactionItem({
 
 export default function HistoryPage() {
   const t = useTranslations("history");
+  const locale = useLocale();
   const { transactions, loading } = useTransactions();
 
   return (
@@ -115,6 +141,7 @@ export default function HistoryPage() {
               <TransactionItem
                 index={index}
                 key={transaction.id}
+                locale={locale}
                 transaction={transaction}
               />
             ))}

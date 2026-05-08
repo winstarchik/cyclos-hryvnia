@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { devtools, persist, createJSONStorage } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 
 /**
  * Wallet provider options supported by the app.
@@ -81,134 +81,111 @@ const storage =
     : createJSONStorage(() => window.localStorage);
 
 export const useWalletStore = create<WalletStore>()(
-  devtools(
-    persist(
-      (set, get) => ({
-        ...initialState,
+  persist(
+    (set, get) => ({
+      ...initialState,
 
-        connectMagic: async (email) => {
-          set({ loading: true, error: null }, false, "wallet/loading");
-          try {
-            // Wallet SDKs are loaded on demand to keep the initial app shell lean.
-            const magic = await import("@/lib/magic");
+      connectMagic: async (email) => {
+        set({ loading: true, error: null });
+        try {
+          // Wallet SDKs are loaded on demand to keep the initial app shell lean.
+          const magic = await import("@/lib/magic");
 
-            // Ensure only one provider is active at a time.
-            if (get().provider === "phantom") {
-              const { disconnectPhantom } = await import("@/lib/phantom");
-              await disconnectPhantom();
-            }
-
-            await magic.loginWithMagic(email);
-            const address = await magic.getMagicWallet();
-
-            set(
-              {
-                address,
-                connected: true,
-                provider: "magic",
-                magicEmail: email,
-                loading: false,
-                error: null,
-              },
-              false,
-              "wallet/connectMagic",
-            );
-          } catch (e) {
-            const message =
-              e instanceof Error ? e.message : "Unable to connect with Magic Link.";
-            set(
-              { loading: false, error: message, connected: false },
-              false,
-              "wallet/connectMagicError",
-            );
-          }
-        },
-
-        connectPhantom: async () => {
-          // Phantom helpers are only needed once the user actively connects.
-          const phantom = await import("@/lib/phantom");
-
-          if (!phantom.isPhantomInstalled()) {
-            set(
-              {
-                error:
-                  "Phantom wallet is not installed. Please install the Phantom browser extension.",
-              },
-              false,
-              "wallet/phantomNotInstalled",
-            );
-            return;
+          // Ensure only one provider is active at a time.
+          if (get().provider === "phantom") {
+            const { disconnectPhantom } = await import("@/lib/phantom");
+            await disconnectPhantom();
           }
 
-          set({ loading: true, error: null }, false, "wallet/loading");
-          try {
-            // Ensure only one provider is active at a time.
-            if (get().provider === "magic") {
-              const { logout: magicLogout } = await import("@/lib/magic");
-              await magicLogout();
-            }
+          await magic.loginWithMagic(email);
+          const address = await magic.getMagicWallet();
 
-            const address = await phantom.connectPhantom();
-            set(
-              {
-                address,
-                connected: true,
-                provider: "phantom",
-                magicEmail: null,
-                loading: false,
-                error: null,
-              },
-              false,
-              "wallet/connectPhantom",
-            );
-          } catch (e) {
-            const message =
-              e instanceof Error ? e.message : "Unable to connect to Phantom.";
-            set(
-              { loading: false, error: message, connected: false },
-              false,
-              "wallet/connectPhantomError",
-            );
-          }
-        },
-
-        disconnect: async () => {
-          const provider = get().provider;
-          try {
-            if (provider === "magic") {
-              const { logout: magicLogout } = await import("@/lib/magic");
-              await magicLogout();
-            }
-            if (provider === "phantom") {
-              const { disconnectPhantom } = await import("@/lib/phantom");
-              await disconnectPhantom();
-            }
-          } finally {
-            set({ ...initialState }, false, "wallet/disconnect");
-          }
-        },
-
-        clearError: () => set({ error: null }, false, "wallet/clearError"),
-      }),
-      {
-        /**
-         * We persist address/provider for UX:
-         * - the UI can show the last connected wallet immediately
-         * - the user feels "still logged in"
-         *
-         * We do NOT persist magicEmail/loading/error because they are personal
-         * or ephemeral UI state.
-         */
-        name: "cyclos-wallet-store",
-        version: 1,
-        storage,
-        partialize: (state) => ({
-          address: state.address,
-          provider: state.provider,
-        }),
+          set({
+            address,
+            connected: true,
+            provider: "magic",
+            magicEmail: email,
+            loading: false,
+            error: null,
+          });
+        } catch (e) {
+          const message =
+            e instanceof Error ? e.message : "Unable to connect with Magic Link.";
+          set({ loading: false, error: message, connected: false });
+        }
       },
-    ),
-    { name: "cyclos-wallet-store" },
+
+      connectPhantom: async () => {
+        // Phantom helpers are only needed once the user actively connects.
+        const phantom = await import("@/lib/phantom");
+
+        if (!phantom.isPhantomInstalled()) {
+          set({
+            error:
+              "Phantom wallet is not installed. Please install the Phantom browser extension.",
+          });
+          return;
+        }
+
+        set({ loading: true, error: null });
+        try {
+          // Ensure only one provider is active at a time.
+          if (get().provider === "magic") {
+            const { logout: magicLogout } = await import("@/lib/magic");
+            await magicLogout();
+          }
+
+          const address = await phantom.connectPhantom();
+          set({
+            address,
+            connected: true,
+            provider: "phantom",
+            magicEmail: null,
+            loading: false,
+            error: null,
+          });
+        } catch (e) {
+          const message =
+            e instanceof Error ? e.message : "Unable to connect to Phantom.";
+          set({ loading: false, error: message, connected: false });
+        }
+      },
+
+      disconnect: async () => {
+        const provider = get().provider;
+        try {
+          if (provider === "magic") {
+            const { logout: magicLogout } = await import("@/lib/magic");
+            await magicLogout();
+          }
+          if (provider === "phantom") {
+            const { disconnectPhantom } = await import("@/lib/phantom");
+            await disconnectPhantom();
+          }
+        } finally {
+          set({ ...initialState });
+        }
+      },
+
+      clearError: () => set({ error: null }),
+    }),
+    {
+      /**
+       * We persist address/provider for UX:
+       * - the UI can show the last connected wallet immediately
+       * - the user feels "still logged in"
+       *
+       * We do NOT persist magicEmail/loading/error because they are personal
+       * or ephemeral UI state.
+       */
+      name: "cyclos-wallet-store",
+      version: 1,
+      storage,
+      partialize: (state) => ({
+        address: state.address,
+        provider: state.provider,
+      }),
+    },
   ),
 );
 

@@ -13,7 +13,6 @@
   "dependencies": {
     "@magic-ext/solana": "^30.6.0",
     "@solana/web3.js": "^1.98.4",
-    "date-fns": "^4.1.0",
     "framer-motion": "^12.38.0",
     "magic-sdk": "^33.7.0",
     "next": "15.5.18",

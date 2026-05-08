@@ -8,6 +8,10 @@ This project uses public browser-safe variables for wallet and RPC setup, and se
 - `NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY`: Magic Link publishable key. This is safe to expose to the browser.
 - `NEXT_PUBLIC_ENVIRONMENT`: Deployment label, for example `development`, `preview`, or `production`.
 
+## Optional Local Diagnostics
+
+- `ANALYZE`: Set to `true` only when running a local bundle analysis build.
+
 ## Server-Only Variables
 
 - `TELEGRAM_BOT_TOKEN`: Telegram bot token. Never prefix this with `NEXT_PUBLIC_`.
@@ -28,6 +32,7 @@ NEXT_PUBLIC_SOLANA_RPC=https://api.devnet.solana.com
 NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY=pk_test_LOCAL_KEY
 TELEGRAM_BOT_TOKEN=TEST_BOT_TOKEN
 NEXT_PUBLIC_ENVIRONMENT=development
+ANALYZE=false
 ```
 
 ## Vercel Setup
