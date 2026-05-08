@@ -1,0 +1,91 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { QRCodeCanvas as QRCode } from "qrcode.react";
+import { useWallet } from "@/hooks/useWallet";
+
+export default function ReceivePage() {
+  const t = useTranslations();
+  const { address } = useWallet();
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+
+    const timeoutId = window.setTimeout(() => setCopied(false), 2000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [copied]);
+
+  async function handleCopy() {
+    if (!address) return;
+
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to copy wallet address", error);
+      }
+    }
+  }
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center bg-dark-950 p-6 pb-20 text-white">
+      <motion.div
+        className="w-full max-w-sm text-center"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+      >
+        <h1 className="mb-2 text-3xl font-bold tracking-normal">
+          {t("receive.title")}
+        </h1>
+        <p className="mb-8 text-gray-400">{t("receive.subtitle")}</p>
+
+        <motion.div
+          className="mb-8 w-full max-w-sm rounded-3xl border border-dark-800 bg-gradient-to-br from-dark-900/50 to-dark-950/50 p-8 shadow-2xl shadow-accent-500/5 backdrop-blur-xl"
+          whileHover={{ borderColor: "#0099ff" }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
+          <div className="rounded-2xl bg-white p-3">
+            <QRCode
+              className="h-auto w-full"
+              includeMargin
+              level="H"
+              size={256}
+              title={t("receive.walletAddress")}
+              value={address || ""}
+            />
+          </div>
+        </motion.div>
+
+        <div className="mb-6 w-full max-w-sm rounded-2xl border border-dark-800 bg-dark-900/30 p-4">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
+            {t("receive.walletAddress")}
+          </p>
+          <p className="select-all break-all font-mono text-sm text-accent-400">
+            {address || ""}
+          </p>
+        </div>
+
+        <motion.button
+          aria-live="polite"
+          className={`w-full max-w-sm rounded-xl py-3 font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-50 ${
+            copied
+              ? "bg-green-500"
+              : "bg-accent-500 hover:bg-accent-600"
+          }`}
+          disabled={!address}
+          onClick={handleCopy}
+          type="button"
+          whileTap={address ? { scale: 0.95 } : undefined}
+        >
+          {copied ? `✓ ${t("common.copied")}` : t("receive.copyAddress")}
+        </motion.button>
+      </motion.div>
+    </main>
+  );
+}
