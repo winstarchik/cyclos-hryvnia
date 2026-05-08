@@ -12,14 +12,11 @@
   },
   "dependencies": {
     "@magic-ext/solana": "^30.6.0",
-    "@solana/spl-token": "^0.4.14",
     "@solana/web3.js": "^1.98.4",
-    "@telegram-apps/sdk": "^3.11.8",
-    "@telegram-apps/sdk-react": "^3.3.9",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.38.0",
     "magic-sdk": "^33.7.0",
-    "next": "15.5.16",
+    "next": "15.5.18",
     "next-intl": "^4.11.0",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
@@ -28,7 +25,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "15.5.16",
+    "@next/bundle-analyzer": "15.5.18",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

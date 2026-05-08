@@ -5,11 +5,11 @@ import {
   type ParsedAccountData,
   type VersionedTransactionResponse,
 } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { TOKENS } from "@/constants/tokens";
 import { SOLANA_RPC } from "@/lib/env";
 import type { Transaction } from "@/types";
 
+const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const DEFAULT_TRANSACTION_LIMIT = 50;
 const SOL_PRICE_USD_FALLBACK = 180;
 

@@ -15,7 +15,7 @@ export function getEnv(key: string, defaultValue?: string): string {
 
 /**
  * Public client-safe configuration. Values prefixed with NEXT_PUBLIC_ are
- * embedded in browser bundles by Next.js, so only non-secret values belong here.
+ * embedded in browser bundles by Next.js, so only non-sensitive values belong here.
  */
 export const SOLANA_RPC = getEnv("NEXT_PUBLIC_SOLANA_RPC", DEFAULT_SOLANA_RPC);
 export const MAGIC_KEY = process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY ?? "";
@@ -28,8 +28,8 @@ export function getMagicPublishableKey(): string {
 /**
  * Server-only Telegram token accessor.
  *
- * Do not rename this to NEXT_PUBLIC_TELEGRAM_BOT_TOKEN. Bot tokens are secrets
- * and must never be shipped to browser code.
+ * Do not expose this through a public browser env var. Bot tokens are private
+ * and belong in server-side code only.
  */
 export function getTelegramBotToken(): string {
   return getEnv("TELEGRAM_BOT_TOKEN");

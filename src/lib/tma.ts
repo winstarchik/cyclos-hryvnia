@@ -1,4 +1,3 @@
-import { retrieveLaunchParams } from "@telegram-apps/sdk";
 import { useEffect, useState } from "react";
 import type { TMAUser } from "@/lib/tmaTypes";
 
@@ -12,6 +11,10 @@ type LaunchParamsLike = {
     start_param?: string;
   };
   platform?: string;
+};
+
+type TelegramWebAppLike = LaunchParamsLike & {
+  initData?: string;
 };
 
 let cachedUser: TMAUser | null | undefined;
@@ -34,6 +37,15 @@ export function isTMAEnvironment(): boolean {
   );
 }
 
+function getLaunchParams(): LaunchParamsLike {
+  const webApp = window.Telegram?.WebApp as TelegramWebAppLike | undefined;
+
+  return {
+    initDataUnsafe: webApp?.initDataUnsafe,
+    platform: webApp?.platform,
+  };
+}
+
 /**
  * Initialize Telegram Mini App context from launch parameters.
  *
@@ -47,7 +59,7 @@ export async function initializeTMA(): Promise<TMAUser | null> {
   }
 
   try {
-    const params = retrieveLaunchParams() as unknown as LaunchParamsLike;
+    const params = getLaunchParams();
     const user = params.initDataUnsafe?.user;
 
     const userId =

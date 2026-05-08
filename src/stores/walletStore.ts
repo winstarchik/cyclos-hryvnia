@@ -192,11 +192,12 @@ export const useWalletStore = create<WalletStore>()(
       }),
       {
         /**
-         * We persist address/provider/magicEmail for UX:
+         * We persist address/provider for UX:
          * - the UI can show the last connected wallet immediately
          * - the user feels "still logged in"
          *
-         * We do NOT persist loading/error because they are ephemeral UI states.
+         * We do NOT persist magicEmail/loading/error because they are personal
+         * or ephemeral UI state.
          */
         name: "cyclos-wallet-store",
         version: 1,
@@ -204,7 +205,6 @@ export const useWalletStore = create<WalletStore>()(
         partialize: (state) => ({
           address: state.address,
           provider: state.provider,
-          magicEmail: state.magicEmail,
         }),
       },
     ),
