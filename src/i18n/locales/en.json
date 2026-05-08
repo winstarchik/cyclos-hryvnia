@@ -28,7 +28,7 @@
     "lastUpdated": "Updated {time}"
   },
   "history": {
-    "title": "History",
+    "title": "Transaction History",
     "empty": "No transactions yet."
   },
   "receive": {
