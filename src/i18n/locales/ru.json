@@ -2,47 +2,52 @@
   "common": {
     "loading": "Загрузка...",
     "copied": "Скопировано",
-    "or": "или"
+    "or": "ИЛИ",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "cancel": "Отмена",
+    "close": "Закрыть"
   },
   "onboarding": {
-    "eyebrow": "Solana кошелек",
+    "eyebrow": "Solana-кошелек",
     "title": "Cyclos Hryvnia",
-    "subtitle": "Ваш вход в Solana DeFi",
-    "emailLabel": "Email адрес",
+    "subtitle": "Ваш доступ к Solana DeFi",
+    "email": "Email-адрес",
+    "emailLabel": "Email-адрес",
     "emailPlaceholder": "you@example.com",
     "continueButton": "Продолжить",
-    "connectPhantom": "Подключить Phantom Wallet",
-    "emailRequired": "Введите email адрес, чтобы продолжить.",
+    "connectPhantom": "Подключить Phantom",
+    "emailRequired": "Введите email-адрес, чтобы продолжить.",
     "magicError": "Не удалось подключиться через Magic Link. Проверьте email и попробуйте снова.",
     "phantomError": "Не удалось подключиться к Phantom. Проверьте расширение и попробуйте снова.",
-    "termsDisclaimer": "Продолжая, вы соглашаетесь с Условиями и Политикой конфиденциальности."
+    "termsDisclaimer": "Подключаясь, Вы соглашаетесь с нашими Условиями обслуживания"
   },
   "wallet": {
     "title": "Ваш кошелек",
-    "totalBalance": "Общий баланс",
-    "connectedAddress": "Подключено: {address}",
     "receive": "Получить",
     "send": "Отправить",
     "assets": "Ваши активы",
-    "emptyAssets": "Активов пока нет. Подключите кошелек или обновите после первого пополнения.",
+    "totalBalance": "Общий баланс",
+    "connectedAddress": "Подключено: {address}",
+    "emptyAssets": "Активов пока нет. Подключите кошелек или обновите данные после первого пополнения.",
     "lastUpdated": "Обновлено {time}"
   },
   "history": {
     "title": "История транзакций",
-    "empty": "Транзакций пока нет."
+    "empty": "Транзакций пока нет"
   },
   "receive": {
-    "title": "Получить",
-    "subtitle": "Поделитесь адресом, чтобы получить средства.",
+    "title": "Получить криптовалюту",
+    "subtitle": "Поделитесь адресом или QR-кодом",
     "walletAddress": "Адрес кошелька",
     "copyAddress": "Скопировать адрес"
   },
   "send": {
-    "title": "Отправить крипто",
+    "title": "Отправить криптовалюту",
     "recipientAddress": "Адрес получателя",
     "selectToken": "Выберите токен",
     "amount": "Сумма",
     "button": "Отправить",
-    "comingSoon": "Скоро"
+    "comingSoon": "Функция отправки появится на этапе 4!"
   }
 }

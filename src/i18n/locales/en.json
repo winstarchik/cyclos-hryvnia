@@ -2,47 +2,52 @@
   "common": {
     "loading": "Loading...",
     "copied": "Copied",
-    "or": "or"
+    "or": "OR",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "close": "Close"
   },
   "onboarding": {
     "eyebrow": "Solana wallet",
     "title": "Cyclos Hryvnia",
     "subtitle": "Your gateway to Solana DeFi",
-    "emailLabel": "Email address",
+    "email": "Email Address",
+    "emailLabel": "Email Address",
     "emailPlaceholder": "you@example.com",
     "continueButton": "Continue",
-    "connectPhantom": "Connect Phantom Wallet",
+    "connectPhantom": "Connect Phantom",
     "emailRequired": "Enter your email address to continue.",
     "magicError": "We could not connect with Magic Link. Please check your email and try again.",
     "phantomError": "We could not connect to Phantom. Please check the extension and try again.",
-    "termsDisclaimer": "By continuing, you agree to the Terms and Privacy Policy."
+    "termsDisclaimer": "By connecting, you agree to our Terms of Service"
   },
   "wallet": {
     "title": "Your Wallet",
-    "totalBalance": "Total balance",
-    "connectedAddress": "Connected: {address}",
     "receive": "Receive",
     "send": "Send",
     "assets": "Your Assets",
+    "totalBalance": "Total Balance",
+    "connectedAddress": "Connected: {address}",
     "emptyAssets": "No assets yet. Connect a wallet or refresh after your first deposit.",
     "lastUpdated": "Updated {time}"
   },
   "history": {
     "title": "Transaction History",
-    "empty": "No transactions yet."
+    "empty": "No transactions yet"
   },
   "receive": {
-    "title": "Receive",
-    "subtitle": "Share your address to receive funds.",
-    "walletAddress": "Wallet address",
-    "copyAddress": "Copy address"
+    "title": "Receive Crypto",
+    "subtitle": "Share your address or QR code",
+    "walletAddress": "Wallet Address",
+    "copyAddress": "Copy Address"
   },
   "send": {
     "title": "Send Crypto",
-    "recipientAddress": "Recipient address",
-    "selectToken": "Select token",
+    "recipientAddress": "Recipient Address",
+    "selectToken": "Select Token",
     "amount": "Amount",
     "button": "Send",
-    "comingSoon": "Coming soon"
+    "comingSoon": "Send functionality coming in Phase 4!"
   }
 }

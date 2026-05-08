@@ -9,8 +9,8 @@ function isAppLocale(locale: string): locale is AppLocale {
   return (locales as readonly string[]).includes(locale);
 }
 
-export default getRequestConfig(async ({ locale }) => {
-  const resolvedLocale = locale ?? "en";
+export default getRequestConfig(async ({ locale, requestLocale }) => {
+  const resolvedLocale = locale ?? (await requestLocale) ?? "en";
 
   if (!isAppLocale(resolvedLocale)) {
     notFound();

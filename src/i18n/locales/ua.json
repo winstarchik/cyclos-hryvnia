@@ -2,47 +2,52 @@
   "common": {
     "loading": "Завантаження...",
     "copied": "Скопійовано",
-    "or": "або"
+    "or": "АБО",
+    "error": "Помилка",
+    "success": "Успіх",
+    "cancel": "Скасувати",
+    "close": "Закрити"
   },
   "onboarding": {
-    "eyebrow": "Solana гаманець",
+    "eyebrow": "Solana-гаманець",
     "title": "Cyclos Hryvnia",
-    "subtitle": "Ваш вхід до Solana DeFi",
-    "emailLabel": "Email адреса",
+    "subtitle": "Ваш доступ до Solana DeFi",
+    "email": "Email-адреса",
+    "emailLabel": "Email-адреса",
     "emailPlaceholder": "you@example.com",
     "continueButton": "Продовжити",
-    "connectPhantom": "Підключити Phantom Wallet",
-    "emailRequired": "Введіть email адресу, щоб продовжити.",
+    "connectPhantom": "Підключити Phantom",
+    "emailRequired": "Введіть email-адресу, щоб продовжити.",
     "magicError": "Не вдалося підключитися через Magic Link. Перевірте email і спробуйте ще раз.",
     "phantomError": "Не вдалося підключитися до Phantom. Перевірте розширення і спробуйте ще раз.",
-    "termsDisclaimer": "Продовжуючи, ви погоджуєтесь з Умовами та Політикою конфіденційності."
+    "termsDisclaimer": "Підключаючись, Ви погоджуєтеся з нашими Умовами надання послуг"
   },
   "wallet": {
     "title": "Ваш гаманець",
-    "totalBalance": "Загальний баланс",
-    "connectedAddress": "Підключено: {address}",
     "receive": "Отримати",
     "send": "Надіслати",
     "assets": "Ваші активи",
-    "emptyAssets": "Активів поки немає. Підключіть гаманець або оновіть після першого поповнення.",
+    "totalBalance": "Загальний баланс",
+    "connectedAddress": "Підключено: {address}",
+    "emptyAssets": "Активів поки немає. Підключіть гаманець або оновіть дані після першого поповнення.",
     "lastUpdated": "Оновлено {time}"
   },
   "history": {
     "title": "Історія транзакцій",
-    "empty": "Транзакцій поки немає."
+    "empty": "Транзакцій поки немає"
   },
   "receive": {
-    "title": "Отримати",
-    "subtitle": "Поділіться адресою, щоб отримати кошти.",
+    "title": "Отримати криптовалюту",
+    "subtitle": "Поділіться адресою або QR-кодом",
     "walletAddress": "Адреса гаманця",
     "copyAddress": "Скопіювати адресу"
   },
   "send": {
-    "title": "Надіслати крипто",
+    "title": "Надіслати криптовалюту",
     "recipientAddress": "Адреса отримувача",
     "selectToken": "Виберіть токен",
     "amount": "Сума",
     "button": "Надіслати",
-    "comingSoon": "Незабаром"
+    "comingSoon": "Функція надсилання з’явиться на етапі 4!"
   }
 }
