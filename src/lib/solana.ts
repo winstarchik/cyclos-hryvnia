@@ -7,10 +7,9 @@ import {
 } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { TOKENS } from "@/constants/tokens";
+import { SOLANA_RPC } from "@/lib/env";
 import type { Transaction } from "@/types";
 
-const MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com";
-const DEVNET_RPC_URL = "https://api.devnet.solana.com";
 const DEFAULT_TRANSACTION_LIMIT = 50;
 const SOL_PRICE_USD_FALLBACK = 180;
 
@@ -28,14 +27,7 @@ type ParsedTokenAccountInfo = {
   };
 };
 
-function resolveRpcUrl(): string {
-  const envRpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC?.trim();
-  if (envRpcUrl) return envRpcUrl;
-
-  return process.env.NODE_ENV === "development" ? DEVNET_RPC_URL : MAINNET_RPC_URL;
-}
-
-export const RPC_URL = resolveRpcUrl();
+export const RPC_URL = SOLANA_RPC;
 
 export const connection = new Connection(RPC_URL, "confirmed");
 

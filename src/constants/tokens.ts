@@ -1,4 +1,5 @@
 import type { Token } from "@/types";
+import { SOLANA_RPC } from "@/lib/env";
 
 type TokenSymbol = "SOL" | "USDC" | "cUAH" | "WBTC";
 
@@ -57,7 +58,7 @@ export const CHAIN_METADATA = {
   solana: {
     name: "Solana",
     symbol: "SOL",
-    rpc: process.env.NEXT_PUBLIC_SOLANA_RPC ?? "https://api.mainnet-beta.solana.com",
+    rpc: SOLANA_RPC,
     color: "#14F195",
   },
   ton: {
@@ -81,4 +82,3 @@ export const CHAIN_METADATA = {
 } as const satisfies Record<ChainId, ChainMetadata>;
 
 export const PRICE_CACHE_TTL = 60_000;
-

@@ -1,8 +1,12 @@
 node_modules
 npm-debug.log
 .next/cache
+.env
 .env.local
 .env.*.local
+.env.development
+.env.preview
+.env.production
 .git
 .DS_Store
 *.test.ts

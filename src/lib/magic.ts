@@ -11,6 +11,7 @@
  */
 
 import type { Magic as MagicInstance } from "magic-sdk";
+import { getMagicPublishableKey, SOLANA_RPC } from "@/lib/env";
 
 type SolanaChainId = 101 | 103;
 
@@ -23,26 +24,6 @@ const singleton: MagicSingleton = {
   magic: null,
   initPromise: null,
 };
-
-function getRpcUrl(): string {
-  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC;
-  if (!rpcUrl) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SOLANA_RPC. Set it in .env.local (e.g. https://api.mainnet-beta.solana.com).",
-    );
-  }
-  return rpcUrl;
-}
-
-function getPublishableKey(): string {
-  const key = process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY;
-  if (!key) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY. Set it in .env.local (Magic publishable key).",
-    );
-  }
-  return key;
-}
 
 function resolveChainId(): SolanaChainId {
   // Solana chain ids used by Magic:
@@ -69,21 +50,20 @@ export async function initMagic(): Promise<MagicInstance> {
       throw new Error("Magic can only be initialized in the browser.");
     }
 
-    const publishableKey = getPublishableKey();
-    const rpcUrl = getRpcUrl();
     const chainId = resolveChainId();
+    const magicKey = getMagicPublishableKey();
 
     const [{ Magic }, { SolanaExtension }] = await Promise.all([
       import("magic-sdk"),
       import("@magic-ext/solana"),
     ]);
 
-    const magic = new Magic(publishableKey, {
+    const magic = new Magic(magicKey, {
       network: {
-        rpcUrl,
+        rpcUrl: SOLANA_RPC,
         chainId,
       },
-      extensions: [new SolanaExtension({ rpcUrl })],
+      extensions: [new SolanaExtension({ rpcUrl: SOLANA_RPC })],
     }) as unknown as MagicInstance;
 
     singleton.magic = magic;
