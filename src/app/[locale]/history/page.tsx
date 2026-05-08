@@ -70,15 +70,15 @@ function TransactionItem({
           <p className="capitalize font-semibold text-white">
             {transaction.type}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="truncate text-xs text-gray-500">
             {formatDistanceToNow(transaction.timestamp, { addSuffix: true })}
           </p>
         </div>
       </div>
 
-      <div className="shrink-0 text-right">
+      <div className="min-w-0 max-w-[45%] shrink-0 text-right">
         <p
-          className={`font-semibold ${
+          className={`break-words text-sm font-semibold sm:text-base ${
             isReceive ? "text-green-400" : "text-gray-300"
           }`}
         >
@@ -97,8 +97,8 @@ export default function HistoryPage() {
   const { transactions, loading } = useTransactions();
 
   return (
-    <main className="min-h-screen bg-dark-950 pb-20 text-white">
-      <section className="px-6 pt-6">
+    <main className="min-h-screen overflow-x-hidden bg-dark-950 pb-[calc(5rem+env(safe-area-inset-bottom))] text-white">
+      <section className="mx-auto w-full max-w-2xl px-6 pt-6">
         <h1 className="mb-6 text-2xl font-bold text-white">{t("title")}</h1>
 
         {loading ? <TransactionHistorySkeleton /> : null}
@@ -132,4 +132,3 @@ export default function HistoryPage() {
     </main>
   );
 }
-

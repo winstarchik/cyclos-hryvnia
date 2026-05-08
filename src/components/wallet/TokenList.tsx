@@ -26,16 +26,16 @@ export function TokenList({ balances }: TokenListProps) {
       {balances.map((balance, index) => (
         <motion.div
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center justify-between gap-3 rounded-2xl border border-dark-800 bg-dark-900/30 p-4 backdrop-blur-sm transition hover:bg-dark-900/50"
+          className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-dark-800 bg-dark-900/30 p-4 backdrop-blur-sm transition hover:bg-dark-900/50"
           initial={{ opacity: 0, x: -20 }}
           key={balance.token.address}
           transition={{ delay: index * 0.05, duration: 0.25, ease: "easeOut" }}
         >
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             {balance.token.logo ? (
               <Image
                 alt={balance.token.symbol}
-                className="rounded-full"
+                className="shrink-0 rounded-full"
                 height={40}
                 loading={index > 5 ? "lazy" : "eager"}
                 src={balance.token.logo}
@@ -60,8 +60,8 @@ export function TokenList({ balances }: TokenListProps) {
             </div>
           </div>
 
-          <div className="shrink-0 text-right">
-            <p className="font-semibold text-white">
+          <div className="min-w-0 max-w-[45%] shrink-0 text-right">
+            <p className="break-words text-sm font-semibold text-white sm:text-base">
               {formatAmount(balance.amount)} {balance.token.symbol}
             </p>
             <p className="text-sm text-gray-400">
@@ -73,4 +73,3 @@ export function TokenList({ balances }: TokenListProps) {
     </div>
   );
 }
-

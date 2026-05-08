@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
+import { BottomNav } from "@/components/layout/BottomNav";
 import { locales } from "@/i18n/request";
 import { notFound } from "next/navigation";
 
@@ -27,7 +28,10 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <NextIntlClientProvider messages={messages}>{children}</NextIntlClientProvider>
+    <NextIntlClientProvider locale={locale} messages={messages}>
+      <div className="min-h-screen overflow-x-hidden">{children}</div>
+      <BottomNav />
+    </NextIntlClientProvider>
   );
 }
 

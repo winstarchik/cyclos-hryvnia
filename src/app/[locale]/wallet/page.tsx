@@ -3,46 +3,10 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
+import { BalanceCard } from "@/components/wallet/BalanceCard";
 import { TokenList } from "@/components/wallet/TokenList";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function formatAddress(address: string | null): string {
-  if (!address) return "";
-  return `${address.slice(0, 4)}...${address.slice(-4)}`;
-}
-
-function BalanceCard({
-  address,
-  totalValueUSD,
-}: {
-  address: string | null;
-  totalValueUSD: number;
-}) {
-  const t = useTranslations("wallet");
-
-  return (
-    <div className="mt-6 rounded-3xl border border-dark-800 bg-dark-950/70 p-5 shadow-2xl shadow-black/30 backdrop-blur-md">
-      <p className="text-sm font-medium text-gray-400">{t("totalBalance")}</p>
-      <p className="mt-2 text-4xl font-semibold tracking-normal text-white">
-        {formatCurrency(totalValueUSD)}
-      </p>
-      {address ? (
-        <p className="mt-3 text-sm text-gray-400">
-          {t("connectedAddress", { address: formatAddress(address) })}
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 function TokenListSkeleton() {
   return (
@@ -71,37 +35,39 @@ export default function WalletPage() {
   const { balances, loading, totalValueUSD, lastUpdated } = useBalance();
 
   return (
-    <main className="min-h-screen bg-dark-950 pb-20 text-white">
+    <main className="min-h-screen overflow-x-hidden bg-dark-950 pb-[calc(5rem+env(safe-area-inset-bottom))] text-white">
       <motion.header
-        className="bg-gradient-to-b from-dark-900 to-dark-950 p-6"
+        className="bg-gradient-to-b from-dark-900 to-dark-950 px-6 py-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35, ease: "easeOut" }}
       >
-        <h1 className="text-3xl font-semibold tracking-normal text-white">
-          {t("title")}
-        </h1>
+        <div className="mx-auto w-full max-w-2xl">
+          <h1 className="text-3xl font-semibold tracking-normal text-white">
+            {t("title")}
+          </h1>
 
-        <BalanceCard address={address} totalValueUSD={totalValueUSD} />
+          <BalanceCard address={address} totalValueUSD={totalValueUSD} />
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <Link
-            className="flex h-12 items-center justify-center rounded-2xl bg-accent-500 px-4 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 transition hover:bg-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-400/60"
-            href={`/${locale}/receive`}
-          >
-            {t("receive")}
-          </Link>
-          <Link
-            className="flex h-12 items-center justify-center rounded-2xl border border-dark-700 bg-dark-900 px-4 text-sm font-semibold text-white transition hover:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-400/60"
-            href={`/${locale}/send`}
-          >
-            {t("send")}
-          </Link>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <Link
+              className="flex h-12 items-center justify-center rounded-2xl bg-accent-500 px-4 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 transition hover:bg-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-400/60"
+              href={`/${locale}/receive`}
+            >
+              {t("receive")}
+            </Link>
+            <Link
+              className="flex h-12 items-center justify-center rounded-2xl border border-dark-700 bg-dark-900 px-4 text-sm font-semibold text-white transition hover:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-400/60"
+              href={`/${locale}/send`}
+            >
+              {t("send")}
+            </Link>
+          </div>
         </div>
       </motion.header>
 
       <motion.section
-        className="px-6 pt-6"
+        className="mx-auto w-full max-w-2xl px-6 pt-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.35, ease: "easeOut" }}

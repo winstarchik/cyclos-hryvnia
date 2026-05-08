@@ -15,8 +15,12 @@ export function BottomNav() {
     { href: "/send", label: "Send", icon: "⬆️" },
   ];
 
+  const isAppRoute = ROUTES.some((route) => pathname.includes(route.href));
+
+  if (!isAppRoute) return null;
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-dark-800 bg-dark-950 px-4 py-3">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-dark-800 bg-dark-950/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md">
       <div className="mx-auto flex max-w-md items-center justify-around gap-2">
         {ROUTES.map((route) => {
           const isActive = pathname.includes(route.href);
@@ -29,7 +33,7 @@ export function BottomNav() {
               key={route.href}
             >
               <motion.div
-                className={`rounded-xl border py-3 text-center transition ${
+                className={`min-h-14 rounded-xl border px-1 py-2 text-center transition ${
                   isActive
                     ? "border-accent-500 bg-accent-500/20"
                     : "border-dark-800"
@@ -54,4 +58,3 @@ export function BottomNav() {
     </nav>
   );
 }
-

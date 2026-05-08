@@ -33,7 +33,7 @@ export default function ReceivePage() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-dark-950 p-6 pb-20 text-white">
+    <main className="flex min-h-screen flex-col items-center justify-center overflow-x-hidden bg-dark-950 px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-6 text-white">
       <motion.div
         className="w-full max-w-sm text-center"
         initial={{ opacity: 0, scale: 0.9 }}
@@ -46,13 +46,13 @@ export default function ReceivePage() {
         <p className="mb-8 text-gray-400">{t("receive.subtitle")}</p>
 
         <motion.div
-          className="mb-8 w-full max-w-sm rounded-3xl border border-dark-800 bg-gradient-to-br from-dark-900/50 to-dark-950/50 p-8 shadow-2xl shadow-accent-500/5 backdrop-blur-xl"
+          className="mb-8 w-full max-w-sm rounded-3xl border border-dark-800 bg-gradient-to-br from-dark-900/50 to-dark-950/50 p-5 shadow-2xl shadow-accent-500/5 backdrop-blur-xl sm:p-8"
           whileHover={{ borderColor: "#0099ff" }}
           transition={{ duration: 0.2, ease: "easeOut" }}
         >
-          <div className="rounded-2xl bg-white p-3">
+          <div className="mx-auto rounded-2xl bg-white p-3">
             <QRCode
-              className="h-auto w-full"
+              className="h-auto w-full max-w-full"
               includeMargin
               level="H"
               size={256}
