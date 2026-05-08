@@ -1,39 +1,44 @@
 {
   "common": {
-    "loading": "Loading…",
-    "copied": "Copied",
-    "or": "or"
+    "loading": "Загрузка...",
+    "copied": "Скопировано",
+    "or": "или"
   },
   "onboarding": {
-    "subtitle": "Connect your wallet to start using Cyclos Hryvnia.",
-    "email": "Email",
-    "continueButton": "Continue",
-    "connectPhantom": "Connect Phantom",
-    "termsDisclaimer": "By continuing, you agree to the Terms and Privacy Policy."
+    "eyebrow": "Solana кошелек",
+    "title": "Cyclos Hryvnia",
+    "subtitle": "Ваш вход в Solana DeFi",
+    "emailLabel": "Email адрес",
+    "emailPlaceholder": "you@example.com",
+    "continueButton": "Продолжить",
+    "connectPhantom": "Подключить Phantom Wallet",
+    "emailRequired": "Введите email адрес, чтобы продолжить.",
+    "magicError": "Не удалось подключиться через Magic Link. Проверьте email и попробуйте снова.",
+    "phantomError": "Не удалось подключиться к Phantom. Проверьте расширение и попробуйте снова.",
+    "termsDisclaimer": "Продолжая, вы соглашаетесь с Условиями и Политикой конфиденциальности."
   },
   "wallet": {
-    "title": "Wallet",
-    "receive": "Receive",
-    "send": "Send",
-    "assets": "Assets"
+    "title": "Кошелек",
+    "receive": "Получить",
+    "send": "Отправить",
+    "assets": "Активы"
   },
   "history": {
-    "title": "History",
-    "empty": "No transactions yet."
+    "title": "История",
+    "empty": "Транзакций пока нет."
   },
   "receive": {
-    "title": "Receive",
-    "subtitle": "Share your address to receive funds.",
-    "walletAddress": "Wallet address",
-    "copyAddress": "Copy address"
+    "title": "Получить",
+    "subtitle": "Поделитесь адресом, чтобы получить средства.",
+    "walletAddress": "Адрес кошелька",
+    "copyAddress": "Скопировать адрес"
   },
   "send": {
-    "title": "Send",
-    "recipientAddress": "Recipient address",
-    "selectToken": "Select token",
-    "amount": "Amount",
-    "button": "Send",
-    "comingSoon": "Coming soon"
+    "title": "Отправить",
+    "recipientAddress": "Адрес получателя",
+    "selectToken": "Выберите токен",
+    "amount": "Сумма",
+    "button": "Отправить",
+    "comingSoon": "Скоро"
   }
 }
-

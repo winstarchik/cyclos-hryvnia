@@ -1,39 +1,44 @@
 {
   "common": {
-    "loading": "Loading…",
-    "copied": "Copied",
-    "or": "or"
+    "loading": "Завантаження...",
+    "copied": "Скопійовано",
+    "or": "або"
   },
   "onboarding": {
-    "subtitle": "Connect your wallet to start using Cyclos Hryvnia.",
-    "email": "Email",
-    "continueButton": "Continue",
-    "connectPhantom": "Connect Phantom",
-    "termsDisclaimer": "By continuing, you agree to the Terms and Privacy Policy."
+    "eyebrow": "Solana гаманець",
+    "title": "Cyclos Hryvnia",
+    "subtitle": "Ваш вхід до Solana DeFi",
+    "emailLabel": "Email адреса",
+    "emailPlaceholder": "you@example.com",
+    "continueButton": "Продовжити",
+    "connectPhantom": "Підключити Phantom Wallet",
+    "emailRequired": "Введіть email адресу, щоб продовжити.",
+    "magicError": "Не вдалося підключитися через Magic Link. Перевірте email і спробуйте ще раз.",
+    "phantomError": "Не вдалося підключитися до Phantom. Перевірте розширення і спробуйте ще раз.",
+    "termsDisclaimer": "Продовжуючи, ви погоджуєтесь з Умовами та Політикою конфіденційності."
   },
   "wallet": {
-    "title": "Wallet",
-    "receive": "Receive",
-    "send": "Send",
-    "assets": "Assets"
+    "title": "Гаманець",
+    "receive": "Отримати",
+    "send": "Надіслати",
+    "assets": "Активи"
   },
   "history": {
-    "title": "History",
-    "empty": "No transactions yet."
+    "title": "Історія",
+    "empty": "Транзакцій поки немає."
   },
   "receive": {
-    "title": "Receive",
-    "subtitle": "Share your address to receive funds.",
-    "walletAddress": "Wallet address",
-    "copyAddress": "Copy address"
+    "title": "Отримати",
+    "subtitle": "Поділіться адресою, щоб отримати кошти.",
+    "walletAddress": "Адреса гаманця",
+    "copyAddress": "Скопіювати адресу"
   },
   "send": {
-    "title": "Send",
-    "recipientAddress": "Recipient address",
-    "selectToken": "Select token",
-    "amount": "Amount",
-    "button": "Send",
-    "comingSoon": "Coming soon"
+    "title": "Надіслати",
+    "recipientAddress": "Адреса отримувача",
+    "selectToken": "Виберіть токен",
+    "amount": "Сума",
+    "button": "Надіслати",
+    "comingSoon": "Незабаром"
   }
 }
-

@@ -1,14 +1,20 @@
 {
   "common": {
-    "loading": "Loading…",
+    "loading": "Loading...",
     "copied": "Copied",
     "or": "or"
   },
   "onboarding": {
-    "subtitle": "Connect your wallet to start using Cyclos Hryvnia.",
-    "email": "Email",
+    "eyebrow": "Solana wallet",
+    "title": "Cyclos Hryvnia",
+    "subtitle": "Your gateway to Solana DeFi",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
     "continueButton": "Continue",
-    "connectPhantom": "Connect Phantom",
+    "connectPhantom": "Connect Phantom Wallet",
+    "emailRequired": "Enter your email address to continue.",
+    "magicError": "We could not connect with Magic Link. Please check your email and try again.",
+    "phantomError": "We could not connect to Phantom. Please check the extension and try again.",
     "termsDisclaimer": "By continuing, you agree to the Terms and Privacy Policy."
   },
   "wallet": {
@@ -36,4 +42,3 @@
     "comingSoon": "Coming soon"
   }
 }
-
