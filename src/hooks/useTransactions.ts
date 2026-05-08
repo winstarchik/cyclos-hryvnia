@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getTransactionHistory } from "@/lib/solana";
 import type { Transaction } from "@/types";
 import { useWallet } from "./useWallet";
 
@@ -47,6 +46,8 @@ export function useTransactions(): UseTransactionsResult {
     setLoading(true);
 
     try {
+      // Split Solana RPC utilities away from the initial history page bundle.
+      const { getTransactionHistory } = await import("@/lib/solana");
       const history = await getTransactionHistory(walletAddress);
       setTransactions(history);
     } catch (error) {
@@ -99,4 +100,3 @@ export function useTransactions(): UseTransactionsResult {
     refetch,
   };
 }
-

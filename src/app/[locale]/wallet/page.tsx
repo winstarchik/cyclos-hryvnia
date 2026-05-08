@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
 import { BalanceCard } from "@/components/wallet/BalanceCard";
 import { TokenList } from "@/components/wallet/TokenList";
@@ -36,12 +35,7 @@ export default function WalletPage() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-dark-950 pb-[calc(5rem+env(safe-area-inset-bottom))] text-white">
-      <motion.header
-        className="bg-gradient-to-b from-dark-900 to-dark-950 px-6 py-6"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-      >
+      <header className="animate-fade-in bg-gradient-to-b from-dark-900 to-dark-950 px-6 py-6">
         <div className="mx-auto w-full max-w-2xl">
           <h1 className="text-3xl font-semibold tracking-normal text-white">
             {t("title")}
@@ -64,13 +58,11 @@ export default function WalletPage() {
             </Link>
           </div>
         </div>
-      </motion.header>
+      </header>
 
-      <motion.section
-        className="mx-auto w-full max-w-2xl px-6 pt-6"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1, duration: 0.35, ease: "easeOut" }}
+      <section
+        className="animate-fade-in mx-auto w-full max-w-2xl px-6 pt-6"
+        style={{ animationDelay: "100ms" }}
       >
         <div className="mb-4 flex items-end justify-between gap-4">
           <h2 className="text-xl font-semibold text-white">{t("assets")}</h2>
@@ -97,7 +89,7 @@ export default function WalletPage() {
         {!loading && balances.length > 0 ? (
           <TokenList balances={balances} />
         ) : null}
-      </motion.section>
+      </section>
     </main>
   );
 }

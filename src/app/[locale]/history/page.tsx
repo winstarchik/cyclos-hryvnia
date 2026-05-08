@@ -1,7 +1,6 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
-import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useTransactions } from "@/hooks/useTransactions";
 import type { Transaction } from "@/types";
@@ -50,11 +49,9 @@ function TransactionItem({
   const isReceive = transaction.type === "receive";
 
   return (
-    <motion.div
-      animate={{ opacity: 1, y: 0 }}
-      className="flex items-center justify-between gap-3 rounded-2xl border border-dark-800 bg-dark-900/30 p-4 transition hover:bg-dark-900/50"
-      initial={{ opacity: 0, y: 10 }}
-      transition={{ delay: index * 0.05, duration: 0.25, ease: "easeOut" }}
+    <div
+      className="animate-fade-in-up flex items-center justify-between gap-3 rounded-2xl border border-dark-800 bg-dark-900/30 p-4 transition hover:bg-dark-900/50"
+      style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="flex min-w-0 items-center gap-3">
         <div
@@ -88,7 +85,7 @@ function TransactionItem({
           {formatValueUSD(transaction.valueUSD)}
         </p>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -113,12 +110,7 @@ export default function HistoryPage() {
         ) : null}
 
         {!loading && transactions.length > 0 ? (
-          <motion.div
-            animate={{ opacity: 1 }}
-            className="space-y-3"
-            initial={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
+          <div className="animate-fade-in space-y-3">
             {transactions.map((transaction, index) => (
               <TransactionItem
                 index={index}
@@ -126,7 +118,7 @@ export default function HistoryPage() {
                 transaction={transaction}
               />
             ))}
-          </motion.div>
+          </div>
         ) : null}
       </section>
     </main>

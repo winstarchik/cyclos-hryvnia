@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
@@ -45,12 +44,7 @@ export default function SendPage() {
           {t("send.title")}
         </h1>
 
-        <motion.div
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-          initial={{ opacity: 0, y: 10 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        >
+        <div className="animate-fade-in-up space-y-6">
           <div>
             <label
               className="mb-2 block text-sm font-medium text-gray-300"
@@ -125,7 +119,7 @@ export default function SendPage() {
           >
             {t("send.button")}
           </button>
-        </motion.div>
+        </div>
       </div>
     </main>
   );

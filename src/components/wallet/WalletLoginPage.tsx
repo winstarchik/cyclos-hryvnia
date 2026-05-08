@@ -1,7 +1,6 @@
 "use client";
 
 import { type FormEvent, useEffect, useId, useState } from "react";
-import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useWallet } from "@/hooks/useWallet";
 
@@ -83,31 +82,13 @@ export function WalletLoginPage() {
 
   return (
     <main className="relative flex min-h-screen overflow-hidden bg-dark-950 px-4 py-8 text-white sm:px-6">
-      <motion.div
+      <div
         aria-hidden="true"
-        className="absolute inset-0 bg-gradient-to-b from-dark-950 to-dark-900"
-        animate={{
-          background: [
-            "radial-gradient(circle at 20% 20%, rgba(0,153,255,0.28), transparent 34%), linear-gradient(180deg, rgb(5,7,18), rgb(10,14,39))",
-            "radial-gradient(circle at 80% 30%, rgba(147,51,234,0.28), transparent 36%), linear-gradient(180deg, rgb(5,7,18), rgb(10,14,39))",
-            "radial-gradient(circle at 50% 80%, rgba(0,212,255,0.22), transparent 38%), linear-gradient(180deg, rgb(5,7,18), rgb(10,14,39))",
-          ],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          repeatType: "mirror",
-          ease: "easeInOut",
-        }}
+        className="animate-gradient-shift absolute inset-0"
       />
 
       <div className="relative z-10 flex w-full flex-1 items-center justify-center pb-[max(env(safe-area-inset-bottom),2rem)] pt-[max(env(safe-area-inset-top),2rem)]">
-        <motion.section
-          className="w-full max-w-sm"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
-        >
+        <section className="animate-fade-in-up w-full max-w-sm">
           <div className="mb-8 text-center">
             <p className="gradient-text text-sm font-semibold uppercase tracking-[0.18em]">
               {t("eyebrow")}
@@ -144,17 +125,15 @@ export function WalletLoginPage() {
                 />
               </div>
 
-              <motion.button
+              <button
                 type="submit"
-                className="flex h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 px-4 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 outline-none transition focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-60"
-                whileHover={isConnecting ? undefined : { scale: 1.02 }}
-                whileTap={isConnecting ? undefined : { scale: 0.98 }}
+                className="flex h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 px-4 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 outline-none transition hover:scale-[1.02] active:scale-[0.98] focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:active:scale-100"
                 disabled={isConnecting}
               >
                 {loadingProvider === "magic"
                   ? common("loading")
                   : t("continueButton")}
-              </motion.button>
+              </button>
             </form>
 
             <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
@@ -163,18 +142,16 @@ export function WalletLoginPage() {
               <span className="h-px flex-1 bg-dark-800" />
             </div>
 
-            <motion.button
+            <button
               type="button"
-              className="flex h-12 w-full items-center justify-center rounded-2xl bg-purple-600 px-4 text-sm font-semibold text-white shadow-lg shadow-purple-900/25 outline-none transition hover:bg-purple-500 focus:ring-2 focus:ring-purple-300/70 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex h-12 w-full items-center justify-center rounded-2xl bg-purple-600 px-4 text-sm font-semibold text-white shadow-lg shadow-purple-900/25 outline-none transition hover:scale-[1.02] hover:bg-purple-500 active:scale-[0.98] focus:ring-2 focus:ring-purple-300/70 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:active:scale-100"
               onClick={handlePhantomConnect}
-              whileHover={isConnecting ? undefined : { scale: 1.02 }}
-              whileTap={isConnecting ? undefined : { scale: 0.98 }}
               disabled={isConnecting}
             >
               {loadingProvider === "phantom"
                 ? common("loading")
                 : t("connectPhantom")}
-            </motion.button>
+            </button>
 
             {visibleErrorKey ? (
               <p
@@ -190,9 +167,8 @@ export function WalletLoginPage() {
               {t("termsDisclaimer")}
             </p>
           </div>
-        </motion.section>
+        </section>
       </div>
     </main>
   );
 }
-

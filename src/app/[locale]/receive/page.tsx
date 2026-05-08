@@ -1,10 +1,23 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
-import { QRCodeCanvas as QRCode } from "qrcode.react";
+import type * as QRCodeReact from "qrcode.react";
 import { useWallet } from "@/hooks/useWallet";
+
+type QRCodeCanvasProps = ComponentProps<typeof QRCodeReact.QRCodeCanvas>;
+
+const QRCode = dynamic<QRCodeCanvasProps>(
+  () => import("qrcode.react").then((mod) => mod.QRCodeCanvas),
+  {
+    loading: () => (
+      <div className="mx-auto aspect-square w-full max-w-[256px] animate-pulse rounded-xl bg-dark-800" />
+    ),
+    ssr: false,
+  },
+);
 
 export default function ReceivePage() {
   const t = useTranslations();
@@ -34,22 +47,13 @@ export default function ReceivePage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center overflow-x-hidden bg-dark-950 px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] pt-6 text-white">
-      <motion.div
-        className="w-full max-w-sm text-center"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-      >
+      <div className="animate-scale-in w-full max-w-sm text-center">
         <h1 className="mb-2 text-3xl font-bold tracking-normal">
           {t("receive.title")}
         </h1>
         <p className="mb-8 text-gray-400">{t("receive.subtitle")}</p>
 
-        <motion.div
-          className="mb-8 w-full max-w-sm rounded-3xl border border-dark-800 bg-gradient-to-br from-dark-900/50 to-dark-950/50 p-5 shadow-2xl shadow-accent-500/5 backdrop-blur-xl sm:p-8"
-          whileHover={{ borderColor: "#0099ff" }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-        >
+        <div className="mb-8 w-full max-w-sm rounded-3xl border border-dark-800 bg-gradient-to-br from-dark-900/50 to-dark-950/50 p-5 shadow-2xl shadow-accent-500/5 backdrop-blur-xl transition hover:border-accent-500 sm:p-8">
           <div className="mx-auto rounded-2xl bg-white p-3">
             <QRCode
               className="h-auto w-full max-w-full"
@@ -60,7 +64,7 @@ export default function ReceivePage() {
               value={address || ""}
             />
           </div>
-        </motion.div>
+        </div>
 
         <div className="mb-6 w-full max-w-sm rounded-2xl border border-dark-800 bg-dark-900/30 p-4">
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -71,9 +75,9 @@ export default function ReceivePage() {
           </p>
         </div>
 
-        <motion.button
+        <button
           aria-live="polite"
-          className={`w-full max-w-sm rounded-xl py-3 font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-50 ${
+          className={`w-full max-w-sm rounded-xl py-3 font-semibold text-white transition active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 ${
             copied
               ? "bg-green-500"
               : "bg-accent-500 hover:bg-accent-600"
@@ -81,11 +85,10 @@ export default function ReceivePage() {
           disabled={!address}
           onClick={handleCopy}
           type="button"
-          whileTap={address ? { scale: 0.95 } : undefined}
         >
           {copied ? `✓ ${t("common.copied")}` : t("receive.copyAddress")}
-        </motion.button>
-      </motion.div>
+        </button>
+      </div>
     </main>
   );
 }

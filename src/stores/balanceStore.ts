@@ -1,7 +1,5 @@
-import { PublicKey } from "@solana/web3.js";
 import { create } from "zustand";
 import { TOKENS } from "@/constants/tokens";
-import { getAllTokenAccounts, getSOLBalance } from "@/lib/solana";
 import { useWalletStore } from "@/stores/walletStore";
 import type { Balance, Token } from "@/types";
 
@@ -122,6 +120,11 @@ export const useBalanceStore = create<BalanceStore>()((set, get) => ({
     set({ loading: true, error: null });
 
     try {
+      // Load Solana RPC code only when balances are fetched so web3.js does
+      // not inflate the first client bundle.
+      const [{ PublicKey }, { getAllTokenAccounts, getSOLBalance }] =
+        await Promise.all([import("@solana/web3.js"), import("@/lib/solana")]);
+
       new PublicKey(address);
 
       const [solAmount, tokenAccounts] = await Promise.all([
@@ -172,4 +175,3 @@ useWalletStore.subscribe((state, prevState) => {
     useBalanceStore.getState().clearBalances();
   }
 });
-

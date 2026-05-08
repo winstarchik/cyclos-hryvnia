@@ -1,24 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
-
 interface SkeletonProps {
   className?: string;
 }
 
 export function Skeleton({ className = "h-6 w-24" }: SkeletonProps) {
-  return (
-    <motion.div
-      animate={{
-        opacity: [0.5, 1, 0.5],
-      }}
-      className={`rounded-lg bg-dark-800 ${className}`}
-      transition={{
-        duration: 2,
-        repeat: Infinity,
-      }}
-    />
-  );
+  return <div className={`animate-pulse rounded-lg bg-dark-800 ${className}`} />;
 }
 
 export function TokenListSkeleton() {

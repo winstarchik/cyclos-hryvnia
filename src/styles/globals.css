@@ -104,4 +104,85 @@
     scrollbar-color: var(--color-dark-800) transparent;
     scrollbar-width: thin;
   }
+
+  .animate-fade-in {
+    animation: cy-fade-in 0.35s ease-out both;
+  }
+
+  .animate-fade-in-up {
+    animation: cy-fade-in-up 0.35s ease-out both;
+  }
+
+  .animate-fade-in-left {
+    animation: cy-fade-in-left 0.25s ease-out both;
+  }
+
+  .animate-scale-in {
+    animation: cy-scale-in 0.35s ease-out both;
+  }
+
+  .animate-gradient-shift {
+    animation: cy-gradient-shift 8s ease-in-out infinite alternate;
+    background:
+      radial-gradient(circle at 20% 20%, rgb(var(--accent-500) / 0.28), transparent 34%),
+      linear-gradient(180deg, rgb(var(--dark-950)), rgb(var(--dark-900)));
+    background-size: 180% 180%;
+  }
+}
+
+@keyframes cy-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cy-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cy-fade-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cy-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes cy-gradient-shift {
+  0% {
+    background-position: 0% 0%;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    background-position: 100% 30%;
+    filter: hue-rotate(25deg);
+  }
+  100% {
+    background-position: 50% 100%;
+    filter: hue-rotate(-18deg);
+  }
 }

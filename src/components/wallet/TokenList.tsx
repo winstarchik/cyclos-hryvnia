@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { motion } from "framer-motion";
 import type { Balance } from "@/types";
 
 interface TokenListProps {
@@ -24,12 +23,10 @@ export function TokenList({ balances }: TokenListProps) {
   return (
     <div className="space-y-3">
       {balances.map((balance, index) => (
-        <motion.div
-          animate={{ opacity: 1, x: 0 }}
-          className="flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-dark-800 bg-dark-900/30 p-4 backdrop-blur-sm transition hover:bg-dark-900/50"
-          initial={{ opacity: 0, x: -20 }}
+        <div
+          className="animate-fade-in-left flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-dark-800 bg-dark-900/30 p-4 backdrop-blur-sm transition hover:bg-dark-900/50"
           key={balance.token.address}
-          transition={{ delay: index * 0.05, duration: 0.25, ease: "easeOut" }}
+          style={{ animationDelay: `${index * 50}ms` }}
         >
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {balance.token.logo ? (
@@ -37,7 +34,8 @@ export function TokenList({ balances }: TokenListProps) {
                 alt={balance.token.symbol}
                 className="shrink-0 rounded-full"
                 height={40}
-                loading={index > 5 ? "lazy" : "eager"}
+                loading="lazy"
+                sizes="40px"
                 src={balance.token.logo}
                 width={40}
               />
@@ -68,7 +66,7 @@ export function TokenList({ balances }: TokenListProps) {
               {formatValueUSD(balance.valueUSD)}
             </p>
           </div>
-        </motion.div>
+        </div>
       ))}
     </div>
   );

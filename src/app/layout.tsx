@@ -6,7 +6,9 @@ import { TMAProvider } from "@/app/TMAProvider";
 
 const inter = Inter({
   variable: "--font-inter",
-  subsets: ["latin"],
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -35,7 +37,7 @@ export default async function RootLayout({
       lang={locale}
       className={`${inter.variable} dark h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-dark-950 text-dark-100 scrollbar-dark">
+      <body className="min-h-full flex flex-col bg-dark-950 font-sans text-dark-100 scrollbar-dark">
         <TMAProvider>{children}</TMAProvider>
       </body>
     </html>

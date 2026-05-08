@@ -1,15 +1,5 @@
 import { create } from "zustand";
 import { devtools, persist, createJSONStorage } from "zustand/middleware";
-import {
-  getMagicWallet,
-  loginWithMagic,
-  logout as magicLogout,
-} from "@/lib/magic";
-import {
-  connectPhantom as connectPhantomWallet,
-  disconnectPhantom,
-  isPhantomInstalled,
-} from "@/lib/phantom";
 
 /**
  * Wallet provider options supported by the app.
@@ -99,13 +89,17 @@ export const useWalletStore = create<WalletStore>()(
         connectMagic: async (email) => {
           set({ loading: true, error: null }, false, "wallet/loading");
           try {
+            // Wallet SDKs are loaded on demand to keep the initial app shell lean.
+            const magic = await import("@/lib/magic");
+
             // Ensure only one provider is active at a time.
             if (get().provider === "phantom") {
+              const { disconnectPhantom } = await import("@/lib/phantom");
               await disconnectPhantom();
             }
 
-            await loginWithMagic(email);
-            const address = await getMagicWallet();
+            await magic.loginWithMagic(email);
+            const address = await magic.getMagicWallet();
 
             set(
               {
@@ -131,7 +125,10 @@ export const useWalletStore = create<WalletStore>()(
         },
 
         connectPhantom: async () => {
-          if (!isPhantomInstalled()) {
+          // Phantom helpers are only needed once the user actively connects.
+          const phantom = await import("@/lib/phantom");
+
+          if (!phantom.isPhantomInstalled()) {
             set(
               {
                 error:
@@ -147,10 +144,11 @@ export const useWalletStore = create<WalletStore>()(
           try {
             // Ensure only one provider is active at a time.
             if (get().provider === "magic") {
+              const { logout: magicLogout } = await import("@/lib/magic");
               await magicLogout();
             }
 
-            const address = await connectPhantomWallet();
+            const address = await phantom.connectPhantom();
             set(
               {
                 address,
@@ -178,9 +176,11 @@ export const useWalletStore = create<WalletStore>()(
           const provider = get().provider;
           try {
             if (provider === "magic") {
+              const { logout: magicLogout } = await import("@/lib/magic");
               await magicLogout();
             }
             if (provider === "phantom") {
+              const { disconnectPhantom } = await import("@/lib/phantom");
               await disconnectPhantom();
             }
           } finally {

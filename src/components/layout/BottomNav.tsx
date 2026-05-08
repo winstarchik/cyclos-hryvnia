@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -32,13 +31,12 @@ export function BottomNav() {
               href={`/${locale}${route.href}`}
               key={route.href}
             >
-              <motion.div
-                className={`min-h-14 rounded-xl border px-1 py-2 text-center transition ${
+              <div
+                className={`min-h-14 rounded-xl border px-1 py-2 text-center transition active:scale-95 ${
                   isActive
                     ? "border-accent-500 bg-accent-500/20"
                     : "border-dark-800"
                 }`}
-                whileTap={{ scale: 0.9 }}
               >
                 <span className="text-xl" aria-hidden="true">
                   {route.icon}
@@ -50,7 +48,7 @@ export function BottomNav() {
                 >
                   {route.label}
                 </p>
-              </motion.div>
+              </div>
             </Link>
           );
         })}
