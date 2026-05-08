@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { TOKENS } from "@/constants/tokens";
+import { handleError, isNetworkError, logDevError } from "@/lib/errors";
 import { useWalletStore } from "@/stores/walletStore";
 import type { Balance, Token } from "@/types";
 
@@ -97,6 +98,16 @@ function getTokenByMint(mint: string): Token {
   };
 }
 
+function getBalanceErrorMessage(error: unknown): string {
+  const appError = handleError(error);
+
+  if (isNetworkError(error) || appError.code === "TIMEOUT") {
+    return "We could not refresh balances because the network is slow. Please try again.";
+  }
+
+  return "We could not refresh balances. Please check your wallet and try again.";
+}
+
 export const useBalanceStore = create<BalanceStore>()((set, get) => ({
   ...initialState,
 
@@ -146,10 +157,11 @@ export const useBalanceStore = create<BalanceStore>()((set, get) => ({
         error: null,
         lastUpdated: Date.now(),
       });
-    } catch {
+    } catch (error) {
+      logDevError("[balances] Failed to refresh balances", error);
       set({
         loading: false,
-        error: "Unable to refresh balances. Please check your wallet and try again.",
+        error: getBalanceErrorMessage(error),
       });
     }
   },

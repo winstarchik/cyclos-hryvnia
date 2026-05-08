@@ -6,7 +6,9 @@
     "error": "Error",
     "success": "Success",
     "cancel": "Cancel",
-    "close": "Close"
+    "close": "Close",
+    "retry": "Retry",
+    "somethingWentWrong": "Something went wrong. Please try again."
   },
   "onboarding": {
     "eyebrow": "Solana wallet",
@@ -30,17 +32,20 @@
     "totalBalance": "Total Balance",
     "connectedAddress": "Connected: {address}",
     "emptyAssets": "No assets yet. Connect a wallet or refresh after your first deposit.",
-    "lastUpdated": "Updated {time}"
+    "lastUpdated": "Updated {time}",
+    "loadError": "We could not refresh balances. Please check your connection and try again."
   },
   "history": {
     "title": "Transaction History",
-    "empty": "No transactions yet"
+    "empty": "No transactions yet",
+    "loadError": "We could not load transaction history. Please try again."
   },
   "receive": {
     "title": "Receive Crypto",
     "subtitle": "Share your address or QR code",
     "walletAddress": "Wallet Address",
-    "copyAddress": "Copy Address"
+    "copyAddress": "Copy Address",
+    "copyError": "We could not copy the address. You can select it manually."
   },
   "send": {
     "title": "Send Crypto",

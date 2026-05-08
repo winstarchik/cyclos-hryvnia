@@ -7,11 +7,14 @@ import {
 } from "@solana/web3.js";
 import { TOKENS } from "@/constants/tokens";
 import { SOLANA_RPC } from "@/lib/env";
+import { isRateLimitError, logDevError, retryAsync } from "@/lib/errors";
 import type { Transaction } from "@/types";
 
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const DEFAULT_TRANSACTION_LIMIT = 50;
 const SOL_PRICE_USD_FALLBACK = 180;
+const RPC_TIMEOUT_MS = 10_000;
+const RPC_RETRY_ATTEMPTS = 3;
 
 export interface TokenAccount {
   pubkey: string;
@@ -31,10 +34,48 @@ export const RPC_URL = SOLANA_RPC;
 
 export const connection = new Connection(RPC_URL, "confirmed");
 
-function logDevError(context: string, error: unknown): void {
-  if (process.env.NODE_ENV !== "production") {
-    console.error(`[solana] ${context}`, error);
+const solBalanceCache = new Map<string, number>();
+const tokenBalanceCache = new Map<string, number>();
+const tokenAccountsCache = new Map<string, TokenAccount[]>();
+const transactionHistoryCache = new Map<string, Transaction[]>();
+
+async function rpcCall<T>(
+  context: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  return retryAsync(operation, {
+    attempts: RPC_RETRY_ATTEMPTS,
+    baseDelayMs: 300,
+    timeoutMs: RPC_TIMEOUT_MS,
+    context,
+  });
+}
+
+function toPublicKey(value: string, context: string): PublicKey | null {
+  try {
+    return new PublicKey(value);
+  } catch (error) {
+    logDevError(`[solana] Invalid public key: ${context}`, error);
+    return null;
   }
+}
+
+function getCachedOrDefault<T>(
+  cache: Map<string, T>,
+  key: string,
+  fallback: T,
+  context: string,
+  error: unknown,
+): T {
+  const cached = cache.get(key);
+
+  if (cached !== undefined && isRateLimitError(error)) {
+    logDevError(`[solana] Returning stale ${context} after rate limit`, error);
+    return cached;
+  }
+
+  logDevError(`[solana] ${context}`, error);
+  return fallback;
 }
 
 function parseTokenAmount(
@@ -55,13 +96,24 @@ function parseTokenAmount(
  * Solana balances are returned in lamports. 1 SOL = 1,000,000,000 lamports.
  */
 export async function getSOLBalance(address: string): Promise<number> {
+  const publicKey = toPublicKey(address, "SOL balance owner");
+  if (!publicKey) return 0;
+
   try {
-    const publicKey = new PublicKey(address);
-    const lamports = await connection.getBalance(publicKey);
-    return lamports / LAMPORTS_PER_SOL;
+    const lamports = await rpcCall("get SOL balance", () =>
+      connection.getBalance(publicKey),
+    );
+    const balance = lamports / LAMPORTS_PER_SOL;
+    solBalanceCache.set(address, balance);
+    return balance;
   } catch (error) {
-    logDevError("Failed to fetch SOL balance", error);
-    return 0;
+    return getCachedOrDefault(
+      solBalanceCache,
+      address,
+      0,
+      "SOL balance",
+      error,
+    );
   }
 }
 
@@ -72,25 +124,39 @@ export async function getTokenBalance(
   address: string,
   tokenMint: string,
 ): Promise<number> {
+  const owner = toPublicKey(address, "token balance owner");
+  const mint = toPublicKey(tokenMint, "token mint");
+  const cacheKey = `${address}:${tokenMint}`;
+
+  if (!owner || !mint) return 0;
+
   try {
-    const owner = new PublicKey(address);
-    const mint = new PublicKey(tokenMint);
-    const accounts = await connection.getTokenAccountsByOwner(owner, { mint });
+    const accounts = await rpcCall("get token accounts by owner", () =>
+      connection.getTokenAccountsByOwner(owner, { mint }),
+    );
 
     let totalBalance = 0;
     for (const { pubkey } of accounts.value) {
       try {
-        const balance = await connection.getTokenAccountBalance(pubkey);
+        const balance = await rpcCall("get token account balance", () =>
+          connection.getTokenAccountBalance(pubkey),
+        );
         totalBalance += parseTokenAmount(balance.value);
       } catch (error) {
-        logDevError(`Failed to fetch token account balance: ${pubkey}`, error);
+        logDevError(`[solana] Failed to fetch token account balance: ${pubkey}`, error);
       }
     }
 
+    tokenBalanceCache.set(cacheKey, totalBalance);
     return totalBalance;
   } catch (error) {
-    logDevError("Failed to fetch SPL token balance", error);
-    return 0;
+    return getCachedOrDefault(
+      tokenBalanceCache,
+      cacheKey,
+      0,
+      "SPL token balance",
+      error,
+    );
   }
 }
 
@@ -102,13 +168,17 @@ export async function getTokenBalance(
 export async function getAllTokenAccounts(
   address: string,
 ): Promise<TokenAccount[]> {
-  try {
-    const owner = new PublicKey(address);
-    const accounts = await connection.getParsedTokenAccountsByOwner(owner, {
-      programId: TOKEN_PROGRAM_ID,
-    });
+  const owner = toPublicKey(address, "token account owner");
+  if (!owner) return [];
 
-    return accounts.value
+  try {
+    const accounts = await rpcCall("get parsed token accounts", () =>
+      connection.getParsedTokenAccountsByOwner(owner, {
+        programId: TOKEN_PROGRAM_ID,
+      }),
+    );
+
+    const tokenAccounts = accounts.value
       .map(({ account, pubkey }): TokenAccount | null => {
         const data = account.data as ParsedAccountData;
         const info = data.parsed.info as ParsedTokenAccountInfo;
@@ -122,9 +192,17 @@ export async function getAllTokenAccounts(
         };
       })
       .filter((account): account is TokenAccount => account !== null);
+
+    tokenAccountsCache.set(address, tokenAccounts);
+    return tokenAccounts;
   } catch (error) {
-    logDevError("Failed to fetch SPL token accounts", error);
-    return [];
+    return getCachedOrDefault(
+      tokenAccountsCache,
+      address,
+      [],
+      "SPL token accounts",
+      error,
+    );
   }
 }
 
@@ -142,19 +220,28 @@ export async function getTransactionHistory(
   address: string,
   limit = DEFAULT_TRANSACTION_LIMIT,
 ): Promise<Transaction[]> {
+  const publicKey = toPublicKey(address, "transaction history owner");
+  if (!publicKey) return [];
+
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  const cacheKey = `${address}:${safeLimit}`;
+
   try {
-    const publicKey = new PublicKey(address);
-    const signatures = await connection.getSignaturesForAddress(publicKey, {
-      limit,
-    });
+    const signatures = await rpcCall("get transaction signatures", () =>
+      connection.getSignaturesForAddress(publicKey, {
+        limit: safeLimit,
+      }),
+    );
     const transactions: Transaction[] = [];
 
     for (const { signature } of signatures) {
       try {
-        const transaction = await connection.getTransaction(signature, {
-          commitment: "confirmed",
-          maxSupportedTransactionVersion: 0,
-        });
+        const transaction = await rpcCall("get transaction detail", () =>
+          connection.getTransaction(signature, {
+            commitment: "confirmed",
+            maxSupportedTransactionVersion: 0,
+          }),
+        );
         const parsed = transaction
           ? parseTransaction(transaction, address)
           : null;
@@ -163,14 +250,21 @@ export async function getTransactionHistory(
           transactions.push(parsed);
         }
       } catch (error) {
-        logDevError(`Failed to fetch transaction: ${signature}`, error);
+        logDevError(`[solana] Failed to fetch transaction: ${signature}`, error);
       }
     }
 
-    return transactions.sort((a, b) => b.timestamp - a.timestamp);
+    const sorted = transactions.sort((a, b) => b.timestamp - a.timestamp);
+    transactionHistoryCache.set(cacheKey, sorted);
+    return sorted;
   } catch (error) {
-    logDevError("Failed to fetch transaction history", error);
-    return [];
+    return getCachedOrDefault(
+      transactionHistoryCache,
+      cacheKey,
+      [],
+      "transaction history",
+      error,
+    );
   }
 }
 
@@ -212,7 +306,7 @@ export function parseTransaction(
       valueUSD: amount * SOL_PRICE_USD_FALLBACK,
     };
   } catch (error) {
-    logDevError("Failed to parse transaction", error);
+    logDevError("[solana] Failed to parse transaction", error);
     return null;
   }
 }

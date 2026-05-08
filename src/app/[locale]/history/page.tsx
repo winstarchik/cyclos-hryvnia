@@ -116,8 +116,9 @@ function TransactionItem({
 
 export default function HistoryPage() {
   const t = useTranslations("history");
+  const common = useTranslations("common");
   const locale = useLocale();
-  const { transactions, loading } = useTransactions();
+  const { transactions, error, loading, refetch } = useTransactions();
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-dark-950 pb-[calc(5rem+env(safe-area-inset-bottom))] text-white">
@@ -126,7 +127,23 @@ export default function HistoryPage() {
 
         {loading ? <TransactionHistorySkeleton /> : null}
 
-        {!loading && transactions.length === 0 ? (
+        {error ? (
+          <div
+            className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-100"
+            role="alert"
+          >
+            <p>{t("loadError")}</p>
+            <button
+              className="mt-3 min-h-11 rounded-xl border border-red-400/40 px-4 text-sm font-semibold text-red-50 transition hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-300/60"
+              onClick={() => void refetch()}
+              type="button"
+            >
+              {common("retry")}
+            </button>
+          </div>
+        ) : null}
+
+        {!loading && !error && transactions.length === 0 ? (
           <div className="flex min-h-[45vh] flex-col items-center justify-center rounded-3xl border border-dark-800 bg-dark-900/30 p-8 text-center">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-dark-800 text-xl">
               ↕️

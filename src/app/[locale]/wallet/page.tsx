@@ -34,9 +34,17 @@ function TokenListSkeleton() {
 
 export default function WalletPage() {
   const t = useTranslations("wallet");
+  const common = useTranslations("common");
   const locale = useLocale();
   const { address } = useWallet();
-  const { balances, loading, totalValueUSD, lastUpdated } = useBalance();
+  const {
+    balances,
+    error,
+    loading,
+    totalValueUSD,
+    lastUpdated,
+    refetch,
+  } = useBalance();
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-dark-950 pb-[calc(5rem+env(safe-area-inset-bottom))] text-white">
@@ -85,7 +93,23 @@ export default function WalletPage() {
 
         {loading ? <TokenListSkeleton /> : null}
 
-        {!loading && balances.length === 0 ? (
+        {error ? (
+          <div
+            className="mb-4 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-100"
+            role="alert"
+          >
+            <p>{t("loadError")}</p>
+            <button
+              className="mt-3 min-h-11 rounded-xl border border-red-400/40 px-4 text-sm font-semibold text-red-50 transition hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-300/60"
+              onClick={() => void refetch()}
+              type="button"
+            >
+              {common("retry")}
+            </button>
+          </div>
+        ) : null}
+
+        {!loading && !error && balances.length === 0 ? (
           <div className="rounded-3xl border border-dark-800 bg-dark-900/45 p-6 text-center text-sm leading-6 text-gray-400">
             {t("emptyAssets")}
           </div>

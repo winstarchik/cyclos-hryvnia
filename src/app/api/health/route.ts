@@ -1,12 +1,28 @@
 import { NextResponse } from "next/server";
+import { handleError, logDevError } from "@/lib/errors";
 
 export async function GET() {
-  const healthcheck = {
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV,
-  };
+  try {
+    const healthcheck = {
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV,
+    };
 
-  return NextResponse.json(healthcheck, { status: 200 });
+    return NextResponse.json(healthcheck, { status: 200 });
+  } catch (error) {
+    const appError = handleError(error);
+    logDevError("[api/health] Health check failed", error);
+
+    return NextResponse.json(
+      {
+        error: {
+          code: appError.code,
+          message: "Health check is temporarily unavailable.",
+        },
+      },
+      { status: 500 },
+    );
+  }
 }

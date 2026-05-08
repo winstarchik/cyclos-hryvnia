@@ -23,6 +23,7 @@ export default function ReceivePage() {
   const t = useTranslations();
   const { address } = useWallet();
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   useEffect(() => {
     if (!copied) return;
@@ -38,10 +39,12 @@ export default function ReceivePage() {
     try {
       await navigator.clipboard.writeText(address);
       setCopied(true);
+      setCopyError(false);
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
         console.error("Failed to copy wallet address", error);
       }
+      setCopyError(true);
     }
   }
 
@@ -88,6 +91,15 @@ export default function ReceivePage() {
         >
           {copied ? `\u2713 ${t("common.copied")}` : t("receive.copyAddress")}
         </button>
+
+        {copyError ? (
+          <p
+            className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-100"
+            role="alert"
+          >
+            {t("receive.copyError")}
+          </p>
+        ) : null}
       </div>
     </main>
   );

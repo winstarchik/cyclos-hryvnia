@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { handleError, logDevError } from "@/lib/errors";
 import type { Transaction } from "@/types";
 import { useWallet } from "./useWallet";
 
@@ -9,13 +10,8 @@ const REFRESH_INTERVAL_MS = 60_000;
 export interface UseTransactionsResult {
   transactions: Transaction[];
   loading: boolean;
+  error: string | null;
   refetch: () => Promise<void>;
-}
-
-function logDevError(context: string, error: unknown): void {
-  if (process.env.NODE_ENV !== "production") {
-    console.error(`[transactions] ${context}`, error);
-  }
 }
 
 /**
@@ -32,6 +28,7 @@ export function useTransactions(): UseTransactionsResult {
   const { address, connected } = useWallet();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const loadingRef = useRef(false);
   const addressRef = useRef<string | null>(address);
   const connectedRef = useRef(connected);
@@ -44,14 +41,16 @@ export function useTransactions(): UseTransactionsResult {
 
     loadingRef.current = true;
     setLoading(true);
+    setError(null);
 
     try {
       // Split Solana RPC utilities away from the initial history page bundle.
       const { getTransactionHistory } = await import("@/lib/solana");
       const history = await getTransactionHistory(walletAddress);
       setTransactions(history);
-    } catch (error) {
-      logDevError("Failed to fetch transaction history", error);
+    } catch (fetchError) {
+      logDevError("[transactions] Failed to fetch transaction history", fetchError);
+      setError(handleError(fetchError).userMessage);
       setTransactions([]);
     } finally {
       loadingRef.current = false;
@@ -63,6 +62,7 @@ export function useTransactions(): UseTransactionsResult {
     if (!connectedRef.current || !addressRef.current) {
       setTransactions([]);
       setLoading(false);
+      setError(null);
       return;
     }
 
@@ -73,6 +73,7 @@ export function useTransactions(): UseTransactionsResult {
     if (!connected || !address) {
       setTransactions([]);
       setLoading(false);
+      setError(null);
       loadingRef.current = false;
       return;
     }
@@ -90,6 +91,7 @@ export function useTransactions(): UseTransactionsResult {
     return {
       transactions: [],
       loading: false,
+      error: null,
       refetch,
     };
   }
@@ -97,6 +99,7 @@ export function useTransactions(): UseTransactionsResult {
   return {
     transactions,
     loading,
+    error,
     refetch,
   };
 }

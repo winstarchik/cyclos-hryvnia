@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
+import { handleError, isNetworkError, logDevError } from "@/lib/errors";
 
 /**
  * Wallet provider options supported by the app.
@@ -80,6 +81,28 @@ const storage =
     ? undefined
     : createJSONStorage(() => window.localStorage);
 
+function getWalletErrorMessage(
+  provider: Exclude<WalletProvider, null>,
+  error: unknown,
+): string {
+  const appError = handleError(error);
+  const message = appError.message;
+
+  if (/reject|denied|declined|cancel/i.test(message)) {
+    return "Connection was cancelled. You can try again when you are ready.";
+  }
+
+  if (isNetworkError(error) || appError.code === "TIMEOUT") {
+    return "The network is taking longer than expected. Please check your connection and try again.";
+  }
+
+  if (provider === "magic") {
+    return "We could not connect with Magic Link. Please check your email and try again.";
+  }
+
+  return "We could not connect to Phantom. Please check your wallet and try again.";
+}
+
 export const useWalletStore = create<WalletStore>()(
   persist(
     (set, get) => ({
@@ -108,27 +131,32 @@ export const useWalletStore = create<WalletStore>()(
             loading: false,
             error: null,
           });
-        } catch (e) {
-          const message =
-            e instanceof Error ? e.message : "Unable to connect with Magic Link.";
-          set({ loading: false, error: message, connected: false });
+        } catch (error) {
+          logDevError("[wallet] Magic connection failed", error);
+          set({
+            loading: false,
+            error: getWalletErrorMessage("magic", error),
+            connected: false,
+          });
         }
       },
 
       connectPhantom: async () => {
-        // Phantom helpers are only needed once the user actively connects.
-        const phantom = await import("@/lib/phantom");
-
-        if (!phantom.isPhantomInstalled()) {
-          set({
-            error:
-              "Phantom wallet is not installed. Please install the Phantom browser extension.",
-          });
-          return;
-        }
-
         set({ loading: true, error: null });
+
         try {
+          // Phantom helpers are only needed once the user actively connects.
+          const phantom = await import("@/lib/phantom");
+
+          if (!phantom.isPhantomInstalled()) {
+            set({
+              loading: false,
+              error:
+                "Phantom is not installed. Please install Phantom and try again.",
+            });
+            return;
+          }
+
           // Ensure only one provider is active at a time.
           if (get().provider === "magic") {
             const { logout: magicLogout } = await import("@/lib/magic");
@@ -144,10 +172,13 @@ export const useWalletStore = create<WalletStore>()(
             loading: false,
             error: null,
           });
-        } catch (e) {
-          const message =
-            e instanceof Error ? e.message : "Unable to connect to Phantom.";
-          set({ loading: false, error: message, connected: false });
+        } catch (error) {
+          logDevError("[wallet] Phantom connection failed", error);
+          set({
+            loading: false,
+            error: getWalletErrorMessage("phantom", error),
+            connected: false,
+          });
         }
       },
 
@@ -162,6 +193,8 @@ export const useWalletStore = create<WalletStore>()(
             const { disconnectPhantom } = await import("@/lib/phantom");
             await disconnectPhantom();
           }
+        } catch (error) {
+          logDevError("[wallet] Disconnect cleanup failed", error);
         } finally {
           set({ ...initialState });
         }
@@ -188,4 +221,3 @@ export const useWalletStore = create<WalletStore>()(
     },
   ),
 );
-
