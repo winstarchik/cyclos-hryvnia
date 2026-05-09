@@ -12,6 +12,47 @@ import { INJECTED_SOLANA_WALLET_NOT_FOUND } from "@/lib/injectedSolana";
 type AuthAction = "google" | "wallet";
 type AuthMode = "login" | "register";
 
+function scheduleAllWalletsOpen() {
+  const startedAt = Date.now();
+  let timeoutId: number | null = null;
+  let stopped = false;
+
+  function findAllWalletsButton() {
+    return Array.from(document.querySelectorAll("button")).find((button) =>
+      button.textContent
+        ?.replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase()
+        .includes("all wallets"),
+    );
+  }
+
+  function tick() {
+    if (stopped) return;
+
+    const allWalletsButton = findAllWalletsButton();
+
+    if (allWalletsButton instanceof HTMLButtonElement) {
+      allWalletsButton.click();
+      stopped = true;
+      return;
+    }
+
+    if (Date.now() - startedAt < 8_000) {
+      timeoutId = window.setTimeout(tick, 150);
+    }
+  }
+
+  timeoutId = window.setTimeout(tick, 150);
+
+  return () => {
+    stopped = true;
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
+  };
+}
+
 function CUAHCoin() {
   return (
     <div
@@ -117,9 +158,13 @@ export function WalletLoginPage() {
     setLocalErrorKey(null);
     clearError();
 
+    const stopAllWalletsOpen =
+      action === "wallet" ? scheduleAllWalletsOpen() : null;
+
     try {
       await connectAction();
     } finally {
+      stopAllWalletsOpen?.();
       setLoadingAction(null);
     }
   }
