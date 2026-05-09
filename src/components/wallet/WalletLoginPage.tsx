@@ -12,10 +12,148 @@ import { INJECTED_SOLANA_WALLET_NOT_FOUND } from "@/lib/injectedSolana";
 type AuthAction = "google" | "wallet";
 type AuthMode = "login" | "register";
 
-function scheduleAllWalletsOpen() {
+function getElementText(element: Element) {
+  return element.textContent?.replace(/\s+/g, " ").trim() ?? "";
+}
+
+function findWalletListTitle() {
+  return Array.from(document.querySelectorAll("p, h1, h2, h3")).find(
+    (element) => getElementText(element).toLowerCase() === "connect your wallet",
+  );
+}
+
+function isWalletListOpen() {
+  const hasTitle = Boolean(findWalletListTitle());
+  const hasWalletSearch = Array.from(document.querySelectorAll("input")).some(
+    (input) =>
+      input.placeholder.toLowerCase().includes("search through") &&
+      input.placeholder.toLowerCase().includes("wallet"),
+  );
+
+  return hasTitle && hasWalletSearch;
+}
+
+function getWalletListHeaderButtons() {
+  const title = findWalletListTitle();
+  if (!title) return [];
+
+  const titleRect = title.getBoundingClientRect();
+
+  return Array.from(document.querySelectorAll("button"))
+    .filter((button) => {
+      const rect = button.getBoundingClientRect();
+      return (
+        rect.width > 0 &&
+        rect.height > 0 &&
+        rect.bottom >= titleRect.top - 32 &&
+        rect.top <= titleRect.bottom + 32
+      );
+    })
+    .sort(
+      (first, second) =>
+        first.getBoundingClientRect().left -
+        second.getBoundingClientRect().left,
+    );
+}
+
+function getWalletSearchInput() {
+  return Array.from(document.querySelectorAll("input")).find(
+    (input) =>
+      input.placeholder.toLowerCase().includes("search through") &&
+      input.placeholder.toLowerCase().includes("wallet"),
+  );
+}
+
+function clickElementAtPoint(x: number, y: number) {
+  const target = document.elementFromPoint(x, y);
+  if (!target) return false;
+
+  const clickable = target.closest("button, [role='button']") ?? target;
+
+  if (clickable instanceof HTMLElement) {
+    clickable.click();
+    return true;
+  }
+
+  const clickEvent = new MouseEvent("click", {
+    bubbles: true,
+    cancelable: true,
+    clientX: x,
+    clientY: y,
+  });
+
+  return clickable.dispatchEvent(clickEvent);
+}
+
+function clickWeb3AuthCloseControl() {
+  const title = findWalletListTitle();
+  const searchInput = getWalletSearchInput();
+  if (!title || !searchInput) return false;
+
+  const titleRect = title.getBoundingClientRect();
+  const searchRect = searchInput.getBoundingClientRect();
+
+  return clickElementAtPoint(
+    searchRect.right - 8,
+    titleRect.top + titleRect.height / 2,
+  );
+}
+
+function closeWeb3AuthModalFromWalletList() {
+  if (clickWeb3AuthCloseControl()) return;
+
+  const headerButtons = getWalletListHeaderButtons();
+  const closeButton = headerButtons.at(-1);
+
+  if (closeButton && closeButton !== headerButtons[0]) {
+    closeButton.click();
+    return;
+  }
+
+  document.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      code: "Escape",
+      key: "Escape",
+    }),
+  );
+}
+
+function overrideWalletListBackButton(onBackToApp: () => void) {
+  function onBackButtonEvent(event: MouseEvent | PointerEvent) {
+    if (!isWalletListOpen()) return;
+
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const clickedButton = target.closest("button");
+    if (!(clickedButton instanceof HTMLButtonElement)) return;
+
+    const [backButton] = getWalletListHeaderButtons();
+    if (clickedButton !== backButton) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+
+    onBackToApp();
+    window.setTimeout(closeWeb3AuthModalFromWalletList, 0);
+  }
+
+  document.addEventListener("pointerdown", onBackButtonEvent, true);
+  document.addEventListener("click", onBackButtonEvent, true);
+  return () => {
+    document.removeEventListener("pointerdown", onBackButtonEvent, true);
+    document.removeEventListener("click", onBackButtonEvent, true);
+  };
+}
+
+function scheduleAllWalletsOpen(onBackToApp: () => void) {
   const startedAt = Date.now();
   let timeoutId: number | null = null;
   let stopped = false;
+  const stopBackButtonOverride = overrideWalletListBackButton(onBackToApp);
 
   function findAllWalletsButton() {
     return Array.from(document.querySelectorAll("button")).find((button) =>
@@ -47,10 +185,15 @@ function scheduleAllWalletsOpen() {
 
   return () => {
     stopped = true;
+    stopBackButtonOverride();
     if (timeoutId) {
       window.clearTimeout(timeoutId);
     }
   };
+}
+
+function isExpectedWalletCancel(message: string | null) {
+  return Boolean(message && /connection was cancelled/i.test(message));
 }
 
 function CUAHCoin() {
@@ -126,7 +269,9 @@ export function WalletLoginPage() {
     ? t(localErrorKey)
     : walletError === INJECTED_SOLANA_WALLET_NOT_FOUND
       ? t("solanaWalletNotFound")
-      : walletError;
+      : isExpectedWalletCancel(walletError)
+        ? null
+        : walletError;
 
   useEffect(() => {
     if (connected) {
@@ -158,13 +303,22 @@ export function WalletLoginPage() {
     setLocalErrorKey(null);
     clearError();
 
+    let didUseWalletBackButton = false;
     const stopAllWalletsOpen =
-      action === "wallet" ? scheduleAllWalletsOpen() : null;
+      action === "wallet"
+        ? scheduleAllWalletsOpen(() => {
+            didUseWalletBackButton = true;
+            clearError();
+          })
+        : null;
 
     try {
       await connectAction();
     } finally {
       stopAllWalletsOpen?.();
+      if (didUseWalletBackButton) {
+        clearError();
+      }
       setLoadingAction(null);
     }
   }
