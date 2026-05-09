@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { MarketCharts } from "@/components/market/MarketCharts";
 import { TokenList } from "@/components/wallet/TokenList";
 import { useBalance } from "@/hooks/useBalance";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useWallet } from "@/hooks/useWallet";
 import type { Transaction } from "@/types";
 
-type WalletTab = "assets" | "activity";
+type WalletTab = "assets" | "activity" | "market";
 
 function ArrowUpRightIcon() {
   return (
@@ -245,9 +246,9 @@ export default function WalletPage() {
           </div>
 
           <div className="mt-4 flex gap-2 border-b border-white/[0.06] pb-4">
-            {(["assets", "activity"] as const).map((item) => (
+            {(["assets", "activity", "market"] as const).map((item) => (
               <Button
-                className={`min-h-10 rounded-xl px-5 py-2 text-sm ${
+                className={`min-h-10 rounded-xl px-4 py-2 text-sm ${
                   tab === item
                     ? ""
                     : "border-transparent bg-transparent text-gray-500 hover:bg-white/[0.04] hover:text-gray-300"
@@ -255,10 +256,14 @@ export default function WalletPage() {
                 key={item}
                 onClick={() => setTab(item)}
                 size="sm"
-                type="button"
-                variant={tab === item ? "primary" : "ghost"}
-              >
-                {item === "assets" ? t("assets") : t("activity")}
+              type="button"
+              variant={tab === item ? "primary" : "ghost"}
+            >
+                {item === "assets"
+                  ? t("assets")
+                  : item === "activity"
+                    ? t("activity")
+                    : t("market")}
               </Button>
             ))}
           </div>
@@ -268,6 +273,8 @@ export default function WalletPage() {
           aria-busy={tab === "assets" ? balanceLoading : transactionLoading}
           className="px-4 pt-4"
         >
+          {tab === "market" ? <MarketCharts /> : null}
+
           {tab === "assets" ? (
             <div className="space-y-3">
               {balanceLoading && balances.length > 0 ? (
@@ -310,7 +317,7 @@ export default function WalletPage() {
                 <TokenList balances={balances} />
               ) : null}
             </div>
-          ) : (
+          ) : tab === "activity" ? (
             <div className="space-y-3">
               {transactionLoading && transactions.length > 0 ? (
                 <p
@@ -360,7 +367,7 @@ export default function WalletPage() {
                   ))
                 : null}
             </div>
-          )}
+          ) : null}
         </section>
       </div>
     </main>

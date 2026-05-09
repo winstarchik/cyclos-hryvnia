@@ -21,7 +21,19 @@ export const SOLANA_RPC = getEnv("NEXT_PUBLIC_SOLANA_RPC", DEFAULT_SOLANA_RPC);
 export const MAGIC_KEY = process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY ?? "";
 export const APP_ENVIRONMENT = getEnv("NEXT_PUBLIC_ENVIRONMENT", "development");
 
+export function hasMagicPublishableKey(): boolean {
+  return (
+    MAGIC_KEY.startsWith("pk_") &&
+    !MAGIC_KEY.includes("YOUR_KEY") &&
+    MAGIC_KEY.length > 20
+  );
+}
+
 export function getMagicPublishableKey(): string {
+  if (!hasMagicPublishableKey()) {
+    throw new Error("Missing Magic publishable key.");
+  }
+
   return getEnv("NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY");
 }
 

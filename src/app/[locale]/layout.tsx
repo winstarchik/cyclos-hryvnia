@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages } from "next-intl/server";
+import { AuthGate } from "@/components/auth/AuthGate";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { locales } from "@/i18n/request";
 import { notFound } from "next/navigation";
@@ -29,7 +30,9 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      <div className="min-h-screen overflow-x-hidden">{children}</div>
+      <AuthGate>
+        <div className="min-h-screen overflow-x-hidden">{children}</div>
+      </AuthGate>
       <BottomNav />
     </NextIntlClientProvider>
   );

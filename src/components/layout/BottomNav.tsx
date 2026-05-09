@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
+import { useWallet } from "@/hooks/useWallet";
 
 type NavIcon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -102,6 +103,7 @@ export function BottomNav() {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const locale = useLocale();
+  const { connected } = useWallet();
 
   const routes: Array<{
     href: string;
@@ -119,7 +121,7 @@ export function BottomNav() {
     pathname.startsWith(`/${locale}${route.href}/`),
   );
 
-  if (!isAppRoute) return null;
+  if (!connected || !isAppRoute) return null;
 
   return (
     <nav

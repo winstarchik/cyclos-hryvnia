@@ -20,11 +20,13 @@
     "subtitle": "Ваш доступ к Solana DeFi",
     "email": "Email-адрес",
     "emailLabel": "Email-адрес",
-    "emailPlaceholder": "you@example.com",
+    "emailPlaceholder": "you@gmail.com",
     "continueButton": "Продолжить",
+    "continueWithGmail": "Продолжить через Gmail",
     "connectPhantom": "Подключить Phantom",
     "emailRequired": "Введите email-адрес, чтобы продолжить.",
     "magicError": "Не удалось подключиться через Magic Link. Проверьте email и попробуйте снова.",
+    "magicConfigError": "Magic Link пока не настроен. Добавьте реальный publishable key Magic или подключите Phantom.",
     "phantomError": "Не удалось подключиться к Phantom. Проверьте расширение и попробуйте снова.",
     "termsDisclaimer": "Подключаясь, Вы соглашаетесь с нашими Условиями обслуживания"
   },
@@ -34,6 +36,7 @@
     "send": "Отправить",
     "assets": "Ваши активы",
     "activity": "Активность",
+    "market": "Рынок",
     "totalBalance": "Общий баланс",
     "connectedAddress": "Подключено: {address}",
     "cuahReady": "cUAH готов",
@@ -100,5 +103,15 @@
     "history": "\u0418\u0441\u0442\u043e\u0440\u0438\u044f",
     "receive": "\u041f\u043e\u043b\u0443\u0447\u0438\u0442\u044c",
     "send": "\u041e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c"
+  },
+  "auth": {
+    "checkingSession": "Проверяем сессию",
+    "loginRequired": "Войдите или подключите кошелек, чтобы продолжить."
+  },
+  "market": {
+    "title": "Графики рынка",
+    "subtitle": "Популярные токены и движение цены за 7 дней",
+    "loadError": "Не удалось загрузить графики рынка. Попробуйте ещё раз.",
+    "retry": "Повторить"
   }
 }

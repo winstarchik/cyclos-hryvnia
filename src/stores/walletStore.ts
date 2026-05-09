@@ -234,6 +234,7 @@ export const useWalletStore = create<WalletStore>()(
       storage,
       partialize: (state) => ({
         address: state.address,
+        connected: state.connected,
         provider: state.provider,
       }),
     },

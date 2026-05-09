@@ -20,11 +20,13 @@
     "subtitle": "Your gateway to Solana DeFi",
     "email": "Email Address",
     "emailLabel": "Email Address",
-    "emailPlaceholder": "you@example.com",
+    "emailPlaceholder": "you@gmail.com",
     "continueButton": "Continue",
+    "continueWithGmail": "Continue with Gmail",
     "connectPhantom": "Connect Phantom",
     "emailRequired": "Enter your email address to continue.",
     "magicError": "We could not connect with Magic Link. Please check your email and try again.",
+    "magicConfigError": "Magic Link is not configured yet. Add a real Magic publishable key or connect Phantom.",
     "phantomError": "We could not connect to Phantom. Please check the extension and try again.",
     "termsDisclaimer": "By connecting, you agree to our Terms of Service"
   },
@@ -34,6 +36,7 @@
     "send": "Send",
     "assets": "Your Assets",
     "activity": "Activity",
+    "market": "Market",
     "totalBalance": "Total Balance",
     "connectedAddress": "Connected: {address}",
     "cuahReady": "cUAH ready",
@@ -100,5 +103,15 @@
     "history": "History",
     "receive": "Receive",
     "send": "Send"
+  },
+  "auth": {
+    "checkingSession": "Checking session",
+    "loginRequired": "Please sign in or connect a wallet to continue."
+  },
+  "market": {
+    "title": "Market Charts",
+    "subtitle": "Popular tokens with 7-day price movement",
+    "loadError": "We could not load market charts. Please try again.",
+    "retry": "Retry"
   }
 }
