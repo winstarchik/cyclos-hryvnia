@@ -197,6 +197,39 @@ function isExpectedWalletCancel(message: string | null) {
   return Boolean(message && /connection was cancelled/i.test(message));
 }
 
+const LEGAL_AGREEMENT_COPY: Record<
+  string,
+  {
+    prefix: string;
+    terms: string;
+    middle: string;
+    privacy: string;
+  }
+> = {
+  en: {
+    prefix: "By connecting, you agree to our",
+    terms: "Terms of Service",
+    middle: "and",
+    privacy: "Privacy Policy",
+  },
+  ua: {
+    prefix: "Підключаючись, Ви погоджуєтеся з",
+    terms: "Умовами користування",
+    middle: "та",
+    privacy: "Політикою конфіденційності",
+  },
+  ru: {
+    prefix: "Подключаясь, Вы соглашаетесь с",
+    terms: "Условиями использования",
+    middle: "и",
+    privacy: "Политикой конфиденциальности",
+  },
+};
+
+function getLegalAgreementCopy(locale: string) {
+  return LEGAL_AGREEMENT_COPY[locale] ?? LEGAL_AGREEMENT_COPY.en;
+}
+
 function CUAHCoin() {
   return (
     <div
@@ -266,6 +299,7 @@ export function WalletLoginPage() {
   const web3AuthConfigured = hasWeb3AuthClientId();
   const isConnecting = Boolean(loadingAction) || walletLoading;
   const isWalletModalActive = loadingAction === "wallet";
+  const legalAgreementCopy = getLegalAgreementCopy(locale);
   const visibleErrorMessage = localErrorKey
     ? t(localErrorKey)
     : walletError === INJECTED_SOLANA_WALLET_NOT_FOUND
@@ -450,7 +484,21 @@ export function WalletLoginPage() {
             ) : null}
 
             <p className="mt-5 text-center text-xs leading-5 text-gray-500">
-              {t("termsDisclaimer")}
+              {legalAgreementCopy.prefix}{" "}
+              <Link
+                className="font-semibold text-gray-300 underline decoration-white/20 underline-offset-4 transition hover:text-accent-400 hover:decoration-accent-400"
+                href={`/${locale}/terms`}
+              >
+                {legalAgreementCopy.terms}
+              </Link>{" "}
+              {legalAgreementCopy.middle}{" "}
+              <Link
+                className="font-semibold text-gray-300 underline decoration-white/20 underline-offset-4 transition hover:text-accent-400 hover:decoration-accent-400"
+                href={`/${locale}/privacy`}
+              >
+                {legalAgreementCopy.privacy}
+              </Link>
+              .
             </p>
           </div>
         </section>
