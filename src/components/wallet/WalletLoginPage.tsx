@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { useTranslations } from "next-intl";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { Button } from "@/components/common/Button";
 import { useWallet } from "@/hooks/useWallet";
 
 type LoadingProvider = "magic" | "phantom" | null;
@@ -142,20 +142,17 @@ export function WalletLoginPage() {
                 />
               </div>
 
-              <button
-                type="submit"
-                className="flex h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 px-4 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 outline-none transition hover:scale-[1.02] active:scale-[0.98] focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:active:scale-100"
+              <Button
+                className="h-12 rounded-2xl text-sm shadow-lg shadow-accent-600/20 hover:scale-[1.02] disabled:hover:scale-100"
                 disabled={isConnecting}
+                fullWidth
+                isLoading={loadingProvider === "magic"}
+                loadingText={common("connecting")}
+                size="md"
+                type="submit"
               >
-                {loadingProvider === "magic" ? (
-                  <span className="inline-flex items-center gap-2">
-                    <LoadingSpinner />
-                    <span>{common("connecting")}</span>
-                  </span>
-                ) : (
-                  t("continueButton")
-                )}
-              </button>
+                {t("continueButton")}
+              </Button>
             </form>
 
             <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
@@ -164,21 +161,19 @@ export function WalletLoginPage() {
               <span className="h-px flex-1 bg-dark-800" />
             </div>
 
-            <button
-              type="button"
-              className="flex h-12 w-full items-center justify-center rounded-2xl bg-purple-600 px-4 text-sm font-semibold text-white shadow-lg shadow-purple-900/25 outline-none transition hover:scale-[1.02] hover:bg-purple-500 active:scale-[0.98] focus:ring-2 focus:ring-purple-300/70 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:active:scale-100"
+            <Button
+              className="h-12 rounded-2xl text-sm shadow-lg shadow-purple-900/25 hover:scale-[1.02] focus-visible:ring-purple-300/70 disabled:hover:scale-100"
               onClick={handlePhantomConnect}
               disabled={isConnecting}
+              fullWidth
+              isLoading={loadingProvider === "phantom"}
+              loadingText={common("connecting")}
+              size="md"
+              type="button"
+              variant="phantom"
             >
-              {loadingProvider === "phantom" ? (
-                <span className="inline-flex items-center gap-2">
-                  <LoadingSpinner />
-                  <span>{common("connecting")}</span>
-                </span>
-              ) : (
-                t("connectPhantom")
-              )}
-            </button>
+              {t("connectPhantom")}
+            </Button>
 
             {showSlowConnection ? (
               <p

@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { Button } from "@/components/common/Button";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
 import type { Balance } from "@/types";
@@ -141,12 +141,11 @@ export default function SendPage() {
               className="min-h-12 w-full rounded-xl border border-dark-800 bg-dark-900 px-4 py-3 text-white placeholder-gray-600 transition focus:border-accent-500 focus:outline-none"
               id="amount"
               inputMode="decimal"
-              min="0"
               onChange={(event) => setAmount(event.target.value)}
+              pattern="[0-9]*[.,]?[0-9]*"
               placeholder="0.00"
-              step="any"
               disabled={processing}
-              type="number"
+              type="text"
               value={amount}
             />
           </div>
@@ -160,20 +159,17 @@ export default function SendPage() {
             </p>
           ) : null}
 
-          <button
-            className="mt-8 min-h-12 w-full rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 py-4 font-semibold text-white transition hover:from-accent-600 hover:to-accent-700 focus:outline-none focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-50"
+          <Button
+            className="mt-8"
             disabled={!canSend}
+            fullWidth
+            isLoading={processing}
+            loadingText={t("send.processing")}
+            size="lg"
             type="submit"
           >
-            {processing ? (
-              <span className="inline-flex items-center justify-center gap-2">
-                <LoadingSpinner />
-                <span>{t("send.processing")}</span>
-              </span>
-            ) : (
-              t("send.button")
-            )}
-          </button>
+            {t("send.button")}
+          </Button>
         </form>
       </div>
     </main>

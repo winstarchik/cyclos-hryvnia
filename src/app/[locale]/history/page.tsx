@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { Button } from "@/components/common/Button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { useTransactions } from "@/hooks/useTransactions";
 import type { Transaction } from "@/types";
@@ -148,13 +149,15 @@ export default function HistoryPage() {
             role="alert"
           >
             <p>{t("loadError")}</p>
-            <button
-              className="mt-3 min-h-11 rounded-xl border border-red-400/40 px-4 text-sm font-semibold text-red-50 transition hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-300/60"
+            <Button
+              className="mt-3 border-red-400/40 text-red-50 hover:bg-red-500/20 focus-visible:ring-red-300/60"
               onClick={() => void refetch()}
+              size="sm"
               type="button"
+              variant="ghost"
             >
               {common("retry")}
-            </button>
+            </Button>
           </div>
         ) : null}
 

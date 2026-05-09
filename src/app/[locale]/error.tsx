@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/common/Button";
 import { logDevError } from "@/lib/errors";
 
 export default function LocaleError({
@@ -24,13 +25,15 @@ export default function LocaleError({
         <p className="mt-3 text-sm leading-6 text-gray-400">
           {common("somethingWentWrong")}
         </p>
-        <button
-          className="mt-6 min-h-12 w-full rounded-xl bg-accent-500 px-4 font-semibold text-white transition hover:bg-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-400/60"
+        <Button
+          className="mt-6"
+          fullWidth
           onClick={reset}
+          size="md"
           type="button"
         >
           {common("retry")}
-        </button>
+        </Button>
       </section>
     </main>
   );

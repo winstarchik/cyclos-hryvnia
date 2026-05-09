@@ -1,7 +1,9 @@
 "use client";
 
 import { lazy, Suspense } from "react";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { Button } from "@/components/common/Button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { BalanceCard } from "@/components/wallet/BalanceCard";
 import { useBalance } from "@/hooks/useBalance";
@@ -63,18 +65,18 @@ export default function WalletPage() {
           />
 
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <a
+            <Link
               className="flex h-12 items-center justify-center rounded-2xl bg-accent-500 px-4 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 transition hover:bg-accent-400 focus:outline-none focus:ring-2 focus:ring-accent-400/60"
               href={`/${locale}/receive`}
             >
               {t("receive")}
-            </a>
-            <a
+            </Link>
+            <Link
               className="flex h-12 items-center justify-center rounded-2xl border border-dark-700 bg-dark-900 px-4 text-sm font-semibold text-white transition hover:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-400/60"
               href={`/${locale}/send`}
             >
               {t("send")}
-            </a>
+            </Link>
           </div>
         </div>
       </header>
@@ -116,13 +118,15 @@ export default function WalletPage() {
             role="alert"
           >
             <p>{t("loadError")}</p>
-            <button
-              className="mt-3 min-h-11 rounded-xl border border-red-400/40 px-4 text-sm font-semibold text-red-50 transition hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-300/60"
+            <Button
+              className="mt-3 border-red-400/40 text-red-50 hover:bg-red-500/20 focus-visible:ring-red-300/60"
               onClick={() => void refetch()}
+              size="sm"
               type="button"
+              variant="ghost"
             >
               {common("retry")}
-            </button>
+            </Button>
           </div>
         ) : null}
 

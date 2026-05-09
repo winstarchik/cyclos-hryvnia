@@ -1,0 +1,13 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="80" height="80" rx="40" fill="#050712"/>
+  <circle cx="40" cy="40" r="31" fill="url(#cuahA)" opacity="0.95"/>
+  <path d="M25 30C25 25.6 28.6 22 33 22H52V29H33C32.4 29 32 29.4 32 30V50C32 50.6 32.4 51 33 51H52V58H33C28.6 58 25 54.4 25 50V30Z" fill="white"/>
+  <path d="M38 36H55V43H38V36Z" fill="#050712" opacity="0.88"/>
+  <defs>
+    <linearGradient id="cuahA" x1="14" x2="66" y1="18" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00D4FF"/>
+      <stop offset="0.5" stop-color="#0099FF"/>
+      <stop offset="1" stop-color="#14F195"/>
+    </linearGradient>
+  </defs>
+</svg>

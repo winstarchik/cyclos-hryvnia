@@ -1,9 +1,11 @@
+"use client";
+
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { tv } from "tailwind-variants";
 import { LoadingSpinner } from "./LoadingSpinner";
 
 const buttonVariants = tv({
-  base: "font-semibold rounded-xl transition focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
+  base: "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 motion-reduce:transition-none motion-reduce:active:scale-100",
   variants: {
     variant: {
       primary:
@@ -11,14 +13,15 @@ const buttonVariants = tv({
       secondary:
         "bg-dark-800 hover:bg-dark-700 text-white border border-dark-700",
       ghost: "text-accent-400 hover:bg-dark-900 border border-dark-700",
+      phantom: "bg-purple-600 text-white hover:bg-purple-500",
       danger: "bg-red-600 hover:bg-red-700 text-white",
       success: "bg-green-600 hover:bg-green-700 text-white",
     },
     size: {
-      sm: "px-4 py-2 text-sm",
-      md: "px-6 py-3 text-base",
-      lg: "px-8 py-4 text-lg",
-      xl: "px-10 py-5 text-xl",
+      sm: "min-h-11 px-4 py-2 text-sm",
+      md: "min-h-12 px-6 py-3 text-base",
+      lg: "min-h-14 px-8 py-4 text-lg",
+      xl: "min-h-16 px-10 py-5 text-xl",
     },
     fullWidth: {
       true: "w-full",
@@ -35,7 +38,7 @@ const buttonVariants = tv({
 export interface ButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
-  variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
+  variant?: "primary" | "secondary" | "ghost" | "phantom" | "danger" | "success";
   size?: "sm" | "md" | "lg" | "xl";
   fullWidth?: boolean;
   isLoading?: boolean;
@@ -60,6 +63,7 @@ export function Button({
   isLoading,
   loadingText = "Loading...",
   disabled,
+  type = "button",
   className,
   ...props
 }: ButtonProps) {
@@ -68,13 +72,14 @@ export function Button({
       className={buttonVariants({ variant, size, fullWidth, className })}
       disabled={disabled || isLoading}
       aria-busy={isLoading || undefined}
+      type={type}
       {...props}
     >
       {isLoading ? (
-        <span className="inline-flex items-center justify-center gap-2">
+        <>
           <LoadingSpinner />
           <span>{loadingText}</span>
-        </span>
+        </>
       ) : (
         children
       )}

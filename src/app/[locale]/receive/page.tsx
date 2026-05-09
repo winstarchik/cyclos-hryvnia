@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import type * as QRCodeReact from "qrcode.react";
+import { Button } from "@/components/common/Button";
 import { useWallet } from "@/hooks/useWallet";
 
 type QRCodeCanvasProps = ComponentProps<typeof QRCodeReact.QRCodeCanvas>;
@@ -84,19 +85,18 @@ export default function ReceivePage() {
           </p>
         </div>
 
-        <button
+        <Button
           aria-live="polite"
-          className={`w-full max-w-sm rounded-xl py-3 font-semibold text-white transition active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 ${
-            copied
-              ? "bg-green-500"
-              : "bg-accent-500 hover:bg-accent-600"
-          }`}
+          className="max-w-sm"
           disabled={!address}
+          fullWidth
           onClick={handleCopy}
+          size="md"
           type="button"
+          variant={copied ? "success" : "primary"}
         >
           {copied ? `\u2713 ${t("common.copied")}` : t("receive.copyAddress")}
-        </button>
+        </Button>
 
         {copyError ? (
           <p

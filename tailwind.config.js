@@ -1,8 +1,8 @@
-import type { Config } from "tailwindcss";
-import forms from "@tailwindcss/forms";
-import defaultTheme from "tailwindcss/defaultTheme";
+const forms = require("@tailwindcss/forms");
+const defaultTheme = require("tailwindcss/defaultTheme");
 
-const config: Config = {
+/** @type {import('tailwindcss').Config} */
+const config = {
   darkMode: "class",
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
@@ -34,5 +34,4 @@ const config: Config = {
   plugins: [forms],
 };
 
-export default config;
-
+module.exports = config;
