@@ -275,10 +275,10 @@ describe("Solana Utilities", () => {
         { signature: olderSignature },
         { signature: newerSignature },
       ] as Awaited<ReturnType<typeof connection.getSignaturesForAddress>>);
-      vi.spyOn(connection, "getTransaction").mockImplementation(
-        async (signature) =>
-          signature === newerSignature ? newerTx : olderTx,
-      );
+      vi.spyOn(connection, "getTransactions").mockResolvedValue([
+        olderTx,
+        newerTx,
+      ] as Awaited<ReturnType<typeof connection.getTransactions>>);
 
       const transactions = await getTransactionHistory(SYSTEM_PROGRAM_ADDRESS, 2);
 
@@ -304,11 +304,11 @@ describe("Solana Utilities", () => {
       vi.spyOn(connection, "getSignaturesForAddress").mockResolvedValue([
         { signature: failedSignature },
       ] as Awaited<ReturnType<typeof connection.getSignaturesForAddress>>);
-      vi.spyOn(connection, "getTransaction").mockResolvedValue(
+      vi.spyOn(connection, "getTransactions").mockResolvedValue([
         createMockTransaction(failedSignature, 1_700_000_000, 5_000, {
           InstructionError: [0, "Custom"],
         }),
-      );
+      ] as Awaited<ReturnType<typeof connection.getTransactions>>);
 
       const transactions = await getTransactionHistory(SYSTEM_PROGRAM_ADDRESS, 1);
 

@@ -15,6 +15,7 @@ const DEFAULT_TRANSACTION_LIMIT = 50;
 const SOL_PRICE_USD_FALLBACK = 180;
 const RPC_TIMEOUT_MS = 10_000;
 const RPC_RETRY_ATTEMPTS = 3;
+const TRANSACTION_FETCH_CONCURRENCY = 8;
 
 export interface TokenAccount {
   pubkey: string;
@@ -88,6 +89,65 @@ function parseTokenAmount(
       : "0");
   const parsed = Number(amount);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = [];
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex]);
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(concurrency, items.length) },
+      () => worker(),
+    ),
+  );
+
+  return results;
+}
+
+async function fetchTransactionDetails(
+  signatures: string[],
+): Promise<Array<VersionedTransactionResponse | null>> {
+  try {
+    return await rpcCall("get transaction batch", () =>
+      connection.getTransactions(signatures, {
+        commitment: "confirmed",
+        maxSupportedTransactionVersion: 0,
+      }),
+    );
+  } catch (error) {
+    logDevError("[solana] Batch transaction fetch failed; falling back", error);
+
+    return mapWithConcurrency(
+      signatures,
+      TRANSACTION_FETCH_CONCURRENCY,
+      async (signature) => {
+        try {
+          return await rpcCall("get transaction detail", () =>
+            connection.getTransaction(signature, {
+              commitment: "confirmed",
+              maxSupportedTransactionVersion: 0,
+            }),
+          );
+        } catch (innerError) {
+          logDevError(`[solana] Failed to fetch transaction: ${signature}`, innerError);
+          return null;
+        }
+      },
+    );
+  }
 }
 
 /**
@@ -232,29 +292,16 @@ export async function getTransactionHistory(
         limit: safeLimit,
       }),
     );
-    const transactions: Transaction[] = [];
+    const transactionDetails = await fetchTransactionDetails(
+      signatures.map(({ signature }) => signature),
+    );
+    const parsedTransactions = transactionDetails.map((transaction) =>
+      transaction ? parseTransaction(transaction, address) : null,
+    );
 
-    for (const { signature } of signatures) {
-      try {
-        const transaction = await rpcCall("get transaction detail", () =>
-          connection.getTransaction(signature, {
-            commitment: "confirmed",
-            maxSupportedTransactionVersion: 0,
-          }),
-        );
-        const parsed = transaction
-          ? parseTransaction(transaction, address)
-          : null;
-
-        if (parsed) {
-          transactions.push(parsed);
-        }
-      } catch (error) {
-        logDevError(`[solana] Failed to fetch transaction: ${signature}`, error);
-      }
-    }
-
-    const sorted = transactions.sort((a, b) => b.timestamp - a.timestamp);
+    const sorted = parsedTransactions
+      .filter((transaction): transaction is Transaction => transaction !== null)
+      .sort((a, b) => b.timestamp - a.timestamp);
     transactionHistoryCache.set(cacheKey, sorted);
     return sorted;
   } catch (error) {
