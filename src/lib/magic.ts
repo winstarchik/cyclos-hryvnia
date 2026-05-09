@@ -13,7 +13,11 @@
 import type { Magic as MagicInstance } from "magic-sdk";
 import { getMagicPublishableKey, SOLANA_RPC } from "@/lib/env";
 
-type SolanaChainId = 101 | 103;
+type MagicWithSolana = MagicInstance & {
+  solana?: {
+    getPublicAddress: () => Promise<string>;
+  };
+};
 
 type MagicSingleton = {
   magic: MagicInstance | null;
@@ -25,19 +29,12 @@ const singleton: MagicSingleton = {
   initPromise: null,
 };
 
-function resolveChainId(): SolanaChainId {
-  // Solana chain ids used by Magic:
-  // - 101: mainnet-beta
-  // - 103: devnet
-  return process.env.NODE_ENV === "development" ? 103 : 101;
-}
-
 /**
  * Initialize (or return) the singleton Magic instance.
  *
  * - Uses `@magic-ext/solana` extension
- * - Network is Mainnet-Beta (101) by default, Devnet (103) in development
  * - RPC URL comes from `NEXT_PUBLIC_SOLANA_RPC`
+ * - Solana network config is owned by the extension, not the base EVM SDK config
  *
  * @throws if required env vars are missing
  */
@@ -50,7 +47,6 @@ export async function initMagic(): Promise<MagicInstance> {
       throw new Error("Magic can only be initialized in the browser.");
     }
 
-    const chainId = resolveChainId();
     const magicKey = getMagicPublishableKey();
 
     const [{ Magic }, { SolanaExtension }] = await Promise.all([
@@ -59,10 +55,6 @@ export async function initMagic(): Promise<MagicInstance> {
     ]);
 
     const magic = new Magic(magicKey, {
-      network: {
-        rpcUrl: SOLANA_RPC,
-        chainId,
-      },
       extensions: [new SolanaExtension({ rpcUrl: SOLANA_RPC })],
     }) as unknown as MagicInstance;
 
@@ -86,11 +78,10 @@ export async function loginWithMagic(email: string): Promise<any> {
 
   try {
     const magic = await initMagic();
-    await magic.auth.loginWithMagicLink({ email });
+    await magic.auth.loginWithMagicLink({ email, showUI: true });
     return await magic.user.getInfo();
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown Magic login error.";
+    const message = getMagicErrorMessage(error);
     throw new Error(`Magic login failed: ${message}`);
   }
 }
@@ -103,22 +94,20 @@ export async function loginWithMagic(email: string): Promise<any> {
  * @throws if not authenticated or address cannot be retrieved
  */
 export async function getMagicWallet(): Promise<string> {
-  const magic = await initMagic();
+  const magic = (await initMagic()) as MagicWithSolana;
 
   const isLoggedIn = await magic.user.isLoggedIn();
   if (!isLoggedIn) {
     throw new Error("Magic wallet is not authenticated. Please login first.");
   }
 
-  const result = (await magic.rpcProvider.request({
-    method: "solana_requestAccounts",
-  })) as unknown;
+  const address = await magic.solana?.getPublicAddress();
 
-  if (!Array.isArray(result) || typeof result[0] !== "string") {
+  if (typeof address !== "string" || address.length === 0) {
     throw new Error("Failed to retrieve Magic Solana account address.");
   }
 
-  return result[0];
+  return address;
 }
 
 /**
@@ -177,8 +166,7 @@ export async function magicSignAndSend(tx: any): Promise<string> {
 
     return signature;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown Magic transaction error.";
+    const message = getMagicErrorMessage(error);
     throw new Error(`Magic sign+send failed: ${message}`);
   }
 }
@@ -194,5 +182,33 @@ export async function logout(): Promise<void> {
     singleton.magic = null;
     singleton.initPromise = null;
   }
+}
+
+function getMagicErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (typeof error === "object" && error !== null) {
+    const maybeMagicError = error as {
+      rawMessage?: unknown;
+      message?: unknown;
+      code?: unknown;
+    };
+
+    if (typeof maybeMagicError.rawMessage === "string") {
+      return maybeMagicError.rawMessage;
+    }
+
+    if (typeof maybeMagicError.message === "string") {
+      return maybeMagicError.message;
+    }
+
+    if (typeof maybeMagicError.code === "string") {
+      return maybeMagicError.code;
+    }
+  }
+
+  return "Unknown Magic error.";
 }
 

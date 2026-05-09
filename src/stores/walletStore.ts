@@ -87,6 +87,15 @@ const storage =
     : createJSONStorage(() => window.localStorage);
 const WALLET_CONNECT_TIMEOUT_MS = 30_000;
 
+function cleanMagicErrorMessage(message: string): string {
+  return message
+    .replace(/^Magic login failed:\s*/i, "")
+    .replace(/^Magic sign\+send failed:\s*/i, "")
+    .replace(/^Magic RPC Error:\s*/i, "")
+    .replace(/^Magic SDK Error:\s*/i, "")
+    .trim();
+}
+
 function getWalletErrorMessage(
   provider: Exclude<WalletProvider, null>,
   error: unknown,
@@ -107,7 +116,25 @@ function getWalletErrorMessage(
   }
 
   if (provider === "magic") {
-    return "We could not connect with Magic Link. Please check your email and try again.";
+    const magicMessage = cleanMagicErrorMessage(message);
+
+    if (/api key|apikey|publishable|missing api|invalid key/i.test(magicMessage)) {
+      return "Magic Link is not configured correctly. Please check the publishable key and try again.";
+    }
+
+    if (/origin|domain|redirect|forbidden|unauthori|not allowed|access denied|localhost/i.test(magicMessage)) {
+      return "Magic Link is blocking this app URL. Add this localhost/domain in the Magic dashboard and try again.";
+    }
+
+    if (/email|deliverable|recipient|attempts|expired|verification/i.test(magicMessage)) {
+      return "We could not complete Magic Link login. Please check your email and try again.";
+    }
+
+    if (process.env.NODE_ENV === "development" && magicMessage) {
+      return `Magic Link error: ${magicMessage}`;
+    }
+
+    return "We could not complete Magic Link login. Please try again.";
   }
 
   return "We could not connect to Phantom. Please check your wallet and try again.";
