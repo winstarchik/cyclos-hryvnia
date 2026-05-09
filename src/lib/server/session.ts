@@ -1,0 +1,95 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthSecret } from "@/lib/env";
+import type { AuthUser } from "@/lib/server/users";
+
+export const SESSION_COOKIE_NAME = "cyclos_session";
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+
+interface SessionPayload {
+  sub: string;
+  email: string;
+  iat: number;
+  exp: number;
+}
+
+function signPayload(payload: string) {
+  return createHmac("sha256", getAuthSecret())
+    .update(payload)
+    .digest("base64url");
+}
+
+export function createSessionToken(user: AuthUser) {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: SessionPayload = {
+    sub: user.id,
+    email: user.email,
+    iat: now,
+    exp: now + SESSION_TTL_SECONDS,
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = signPayload(encodedPayload);
+
+  return `${encodedPayload}.${signature}`;
+}
+
+export function verifySessionToken(token: string | undefined) {
+  if (!token) {
+    return null;
+  }
+
+  const [encodedPayload, signature] = token.split(".");
+  if (!encodedPayload || !signature) {
+    return null;
+  }
+
+  const expectedSignature = signPayload(encodedPayload);
+  const received = Buffer.from(signature);
+  const expected = Buffer.from(expectedSignature);
+
+  if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
+    return null;
+  }
+
+  try {
+    const payload = JSON.parse(
+      Buffer.from(encodedPayload, "base64url").toString("utf8"),
+    ) as SessionPayload;
+
+    if (!payload.sub || !payload.email || payload.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+export function getSessionFromRequest(request: NextRequest) {
+  return verifySessionToken(request.cookies.get(SESSION_COOKIE_NAME)?.value);
+}
+
+export function attachSessionCookie(response: NextResponse, user: AuthUser) {
+  response.cookies.set(SESSION_COOKIE_NAME, createSessionToken(user), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: SESSION_TTL_SECONDS,
+  });
+
+  return response;
+}
+
+export function clearSessionCookie(response: NextResponse) {
+  response.cookies.set(SESSION_COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+
+  return response;
+}

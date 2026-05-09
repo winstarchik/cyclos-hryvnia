@@ -3,6 +3,7 @@ import { getLocale } from "next-intl/server";
 import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 import { TMAProvider } from "@/app/TMAProvider";
+import { Web3AuthAppProvider } from "@/app/Web3AuthAppProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -38,7 +39,9 @@ export default async function RootLayout({
       className={`${inter.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-dark-950 font-sans text-dark-100 scrollbar-dark">
-        <TMAProvider>{children}</TMAProvider>
+        <TMAProvider>
+          <Web3AuthAppProvider>{children}</Web3AuthAppProvider>
+        </TMAProvider>
       </body>
     </html>
   );

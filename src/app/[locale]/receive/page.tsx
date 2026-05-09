@@ -30,7 +30,6 @@ const QRCode = dynamic<QRCodeCanvasProps>(
 );
 
 const RECEIVE_TOKENS: Token[] = [
-  TOKENS.cUAH,
   TOKENS.SOL,
   TOKENS.USDC,
   TOKENS.WBTC,
@@ -73,7 +72,7 @@ export default function ReceivePage() {
   const t = useTranslations();
   const locale = useLocale();
   const { address } = useWallet();
-  const [selectedToken, setSelectedToken] = useState<Token>(TOKENS.cUAH);
+  const [selectedToken, setSelectedToken] = useState<Token>(TOKENS.SOL);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
 

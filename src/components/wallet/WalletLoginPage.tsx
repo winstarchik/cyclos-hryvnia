@@ -1,13 +1,26 @@
 "use client";
 
-import { type FormEvent, useEffect, useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
-import { hasMagicPublishableKey } from "@/lib/env";
 import { useWallet } from "@/hooks/useWallet";
+import { hasWeb3AuthClientId } from "@/lib/env";
+import { INJECTED_SOLANA_WALLET_NOT_FOUND } from "@/lib/injectedSolana";
 
-type LoadingProvider = "magic" | "phantom" | null;
+type AuthMode = "login" | "register";
+type AuthAction = "google" | "email" | "wallet";
+
+interface AuthApiResponse {
+  status: "ok" | "error";
+  error?: string;
+  message?: string;
+  data?: {
+    user?: {
+      email?: string;
+    };
+  };
+}
 
 function CUAHCoin() {
   return (
@@ -20,17 +33,39 @@ function CUAHCoin() {
   );
 }
 
-function PhantomLogo() {
+function WalletIcon() {
   return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 128 128">
-      <rect fill="#AB9FF2" height="128" rx="32" width="128" />
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
       <path
-        d="M110.584 64.914H99.142C99.142 41.765 80.173 23 56.75 23 33.622 23 14.816 41.395 14.42 64.217 14.01 87.757 35.422 108 59.387 108h3.783c21.126 0 49.945-16.215 54.117-35.953.752-3.551-2.166-7.133-6.703-7.133Z"
-        fill="white"
+        d="M20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
       />
-      <ellipse cx="79.002" cy="55.479" fill="#AB9FF2" rx="6.5" ry="9.5" />
-      <ellipse cx="54.002" cy="55.479" fill="#AB9FF2" rx="6.5" ry="9.5" />
+      <path
+        d="M20 9h-4.5a2.5 2.5 0 0 0 0 5H20"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+      <path
+        d="M15.5 11.5h.01"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.4"
+      />
     </svg>
+  );
+}
+
+function ProviderMark({ children }: { children: string }) {
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-dark-950">
+      {children}
+    </span>
   );
 }
 
@@ -40,39 +75,35 @@ export function WalletLoginPage() {
   const locale = useLocale();
   const router = useRouter();
   const {
-    connectMagic,
-    connectPhantom,
+    connectGoogle,
+    connectExternalWallet,
+    setEmailPasswordSession,
     connected,
-    provider,
     loading: walletLoading,
     error: walletError,
     clearError,
   } = useWallet();
 
-  const emailId = useId();
   const errorId = useId();
+  const emailInputId = useId();
+  const passwordInputId = useId();
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [loadingProvider, setLoadingProvider] = useState<LoadingProvider>(null);
+  const [password, setPassword] = useState("");
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
+  const [loadingAction, setLoadingAction] = useState<AuthAction | null>(null);
   const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
-  const [lastAttempt, setLastAttempt] = useState<LoadingProvider>(null);
   const [showSlowConnection, setShowSlowConnection] = useState(false);
-  const magicConfigured = hasMagicPublishableKey();
+  const web3AuthConfigured = hasWeb3AuthClientId();
 
-  const isConnecting = loading || walletLoading;
-  const visibleErrorKey =
-    localErrorKey ??
-    (walletError
-      ? lastAttempt === "phantom"
-        ? "phantomError"
-        : "magicError"
-      : null);
-
-  useEffect(() => {
-    if (connected && provider === "magic") {
-      setEmail("");
-    }
-  }, [connected, provider]);
+  const isConnecting = Boolean(loadingAction) || walletLoading;
+  const visibleErrorMessage = localErrorKey
+    ? t(localErrorKey)
+    : walletError === INJECTED_SOLANA_WALLET_NOT_FOUND
+      ? t("solanaWalletNotFound")
+      : walletError;
+  const modeHint =
+    authMode === "login" ? t("loginHint") : t("registerHint");
 
   useEffect(() => {
     if (connected) {
@@ -90,60 +121,113 @@ export function WalletLoginPage() {
     return () => window.clearTimeout(timeoutId);
   }, [isConnecting]);
 
-  async function handleMagicLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function runAuthAction(
+    action: AuthAction,
+    connectAction: () => Promise<void>,
+  ) {
+    if (action === "google" && !web3AuthConfigured) {
+      clearError();
+      setLocalErrorKey("web3AuthConfigError");
+      return;
+    }
 
-    if (!email.trim()) {
+    setLoadingAction(action);
+    setLocalErrorKey(null);
+    clearError();
+
+    try {
+      await connectAction();
+    } finally {
+      setLoadingAction(null);
+    }
+  }
+
+  async function handleEmailLogin() {
+    if (!showEmailLogin) {
+      clearError();
+      setLocalErrorKey(null);
+      setShowEmailLogin(true);
+      return;
+    }
+
+    const trimmedEmail = email.trim();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+    if (!isValidEmail) {
       clearError();
       setLocalErrorKey("emailRequired");
       return;
     }
 
-    if (!magicConfigured) {
+    if (!password) {
       clearError();
-      setLocalErrorKey("magicConfigError");
+      setLocalErrorKey("passwordRequired");
       return;
     }
 
-    setLoading(true);
-    setLoadingProvider("magic");
-    setLastAttempt("magic");
-    setLocalErrorKey(null);
-    clearError();
-
-    try {
-      await connectMagic(email.trim());
-    } finally {
-      setLoading(false);
-      setLoadingProvider(null);
+    if (password.length < 8 || password.length > 128) {
+      clearError();
+      setLocalErrorKey("passwordTooShort");
+      return;
     }
-  }
 
-  async function handlePhantomConnect() {
-    setLoading(true);
-    setLoadingProvider("phantom");
-    setLastAttempt("phantom");
-    setLocalErrorKey(null);
-    clearError();
+    await runAuthAction("email", async () => {
+      const response = await fetch(
+        authMode === "login" ? "/api/auth/login" : "/api/auth/register",
+        {
+          body: JSON.stringify({
+            email: trimmedEmail,
+            password,
+          }),
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          method: "POST",
+        },
+      );
+      const payload = (await response.json().catch(() => ({}))) as AuthApiResponse;
 
-    try {
-      await connectPhantom();
-    } finally {
-      setLoading(false);
-      setLoadingProvider(null);
-    }
+      if (!response.ok) {
+        if (payload.error === "ACCOUNT_NOT_FOUND") {
+          setLocalErrorKey("emailAccountMissing");
+          return;
+        }
+
+        if (payload.error === "ACCOUNT_EXISTS") {
+          setAuthMode("login");
+          setLocalErrorKey("emailAccountExists");
+          return;
+        }
+
+        if (
+          payload.error === "INVALID_CREDENTIALS" ||
+          payload.error === "INVALID_PASSWORD"
+        ) {
+          setLocalErrorKey("invalidCredentials");
+          return;
+        }
+
+        if (payload.error === "RATE_LIMITED") {
+          setLocalErrorKey("tooManyAttempts");
+          return;
+        }
+
+        setLocalErrorKey("authServerError");
+        return;
+      }
+
+      const authenticatedEmail = payload.data?.user?.email ?? trimmedEmail;
+      setEmailPasswordSession(authenticatedEmail);
+    });
   }
 
   return (
     <main className="relative flex min-h-screen overflow-hidden bg-dark-950 px-4 py-8 text-white sm:px-6">
-      <div
-        aria-hidden="true"
-        className="animate-gradient-shift absolute inset-0"
-      />
+      <div aria-hidden="true" className="animate-gradient-shift absolute inset-0" />
 
       <div className="relative z-10 flex w-full flex-1 items-center justify-center pb-[max(env(safe-area-inset-bottom),2rem)] pt-[max(env(safe-area-inset-top),2rem)]">
         <section className="animate-fade-in-up w-full max-w-sm">
-          <div className="mb-8 text-center">
+          <div className="mb-7 text-center">
             <CUAHCoin />
             <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-accent-400">
               {t("eyebrow")}
@@ -156,74 +240,166 @@ export function WalletLoginPage() {
             </p>
           </div>
 
-          <div className="cy-card-soft p-5 sm:p-6">
-            <form
-              aria-busy={isConnecting}
-              aria-live="polite"
-              className="space-y-4"
-              onSubmit={handleMagicLogin}
-            >
-              <div className="space-y-2">
-                <label
-                  className="block text-sm font-medium text-gray-300"
-                  htmlFor={emailId}
+          <div className="cy-card-soft p-4 sm:p-5">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-dark-800 bg-dark-950/70 p-1">
+              {(["login", "register"] as const).map((mode) => (
+                <button
+                  aria-pressed={authMode === mode}
+                  className={`min-h-11 rounded-xl text-sm font-semibold transition ${
+                    authMode === mode
+                      ? "bg-accent-500 text-white shadow-lg shadow-accent-600/20"
+                      : "text-gray-400 hover:bg-dark-900 hover:text-white"
+                  }`}
+                  disabled={isConnecting}
+                  key={mode}
+                  onClick={() => {
+                    setAuthMode(mode);
+                    setLocalErrorKey(null);
+                    clearError();
+                  }}
+                  type="button"
                 >
-                  {t("emailLabel")}
-                </label>
-                <input
-                  id={emailId}
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder={t("emailPlaceholder")}
-                  aria-invalid={Boolean(visibleErrorKey)}
-                  aria-describedby={visibleErrorKey ? errorId : undefined}
-                  className="cy-input"
-                disabled={isConnecting}
-              />
+                  {mode === "login" ? t("login") : t("register")}
+                </button>
+              ))}
             </div>
 
+            <div className="mt-5">
+              <p className="text-sm leading-6 text-gray-400">{modeHint}</p>
+            </div>
+
+            <div aria-busy={isConnecting} aria-live="polite" className="mt-5 space-y-3">
               <Button
                 className="h-12 rounded-2xl text-sm shadow-lg shadow-accent-600/20 hover:scale-[1.02] disabled:hover:scale-100"
                 disabled={isConnecting}
                 fullWidth
-                isLoading={loadingProvider === "magic"}
+                isLoading={loadingAction === "google"}
                 loadingText={common("connecting")}
+                onClick={() => runAuthAction("google", connectGoogle)}
                 size="md"
-                type="submit"
+                type="button"
               >
-                {t("continueWithGmail")}
+                <ProviderMark>G</ProviderMark>
+                {t("continueWithGoogle")}
               </Button>
-            </form>
 
-            {!magicConfigured ? (
-              <p className="mt-3 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
-                {t("magicConfigError")}
-              </p>
-            ) : null}
+              <Button
+                className="h-12 rounded-2xl text-sm"
+                disabled={isConnecting}
+                fullWidth
+                isLoading={loadingAction === "email"}
+                loadingText={common("connecting")}
+                onClick={handleEmailLogin}
+                size="md"
+                type="button"
+                variant="secondary"
+              >
+                <ProviderMark>@</ProviderMark>
+                {showEmailLogin
+                  ? authMode === "login"
+                    ? t("loginWithEmail")
+                    : t("createAccountWithEmail")
+                  : t("continueWithEmail")}
+              </Button>
 
-            <div className="my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">
+              {showEmailLogin ? (
+                <div className="space-y-3 rounded-2xl border border-dark-800 bg-dark-950/70 p-3">
+                  <div>
+                    <label
+                      className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500"
+                      htmlFor={emailInputId}
+                    >
+                      {t("emailAddress")}
+                    </label>
+                    <input
+                      aria-describedby={visibleErrorMessage ? errorId : undefined}
+                      aria-invalid={localErrorKey === "emailRequired"}
+                      autoComplete="email"
+                      className="input-base min-h-12 w-full"
+                      disabled={isConnecting}
+                      id={emailInputId}
+                      inputMode="email"
+                      onChange={(event) => {
+                        setEmail(event.target.value);
+                        if (localErrorKey === "emailRequired") {
+                          setLocalErrorKey(null);
+                        }
+                      }}
+                      placeholder={t("emailPlaceholder")}
+                      type="email"
+                      value={email}
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500"
+                      htmlFor={passwordInputId}
+                    >
+                      {t("password")}
+                    </label>
+                    <input
+                      aria-describedby={visibleErrorMessage ? errorId : undefined}
+                      aria-invalid={
+                        localErrorKey === "passwordRequired" ||
+                        localErrorKey === "passwordTooShort"
+                      }
+                      autoComplete={
+                        authMode === "login" ? "current-password" : "new-password"
+                      }
+                      className="input-base min-h-12 w-full"
+                      disabled={isConnecting}
+                      id={passwordInputId}
+                      onChange={(event) => {
+                        setPassword(event.target.value);
+                        if (
+                          localErrorKey === "passwordRequired" ||
+                          localErrorKey === "passwordTooShort" ||
+                          localErrorKey === "invalidCredentials"
+                        ) {
+                          setLocalErrorKey(null);
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !isConnecting) {
+                          void handleEmailLogin();
+                        }
+                      }}
+                      placeholder={t("passwordPlaceholder")}
+                      type="password"
+                      value={password}
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
               <span className="h-px flex-1 bg-dark-800" />
               <span>{common("or")}</span>
               <span className="h-px flex-1 bg-dark-800" />
             </div>
 
             <Button
-              className="h-12 rounded-2xl border border-[#AB9FF2]/25 bg-[#AB9FF2]/15 text-sm text-[#f0edff] shadow-lg shadow-purple-900/20 hover:bg-[#AB9FF2]/20 hover:scale-[1.02] focus-visible:ring-purple-300/70 disabled:hover:scale-100"
-              onClick={handlePhantomConnect}
+              className="h-12 rounded-2xl text-sm"
               disabled={isConnecting}
               fullWidth
-              isLoading={loadingProvider === "phantom"}
+              isLoading={loadingAction === "wallet"}
               loadingText={common("connecting")}
+              onClick={() => runAuthAction("wallet", connectExternalWallet)}
               size="md"
               type="button"
               variant="secondary"
             >
-              <PhantomLogo />
-              {t("connectPhantom")}
+              <WalletIcon />
+              {t("connectExternalWallet")}
             </Button>
+
+            {!web3AuthConfigured ? (
+              <p className="mt-4 rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
+                {t("web3AuthConfigError")}
+              </p>
+            ) : null}
 
             {showSlowConnection ? (
               <p
@@ -234,13 +410,13 @@ export function WalletLoginPage() {
               </p>
             ) : null}
 
-            {visibleErrorKey ? (
+            {visibleErrorMessage ? (
               <p
+                className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200"
                 id={errorId}
                 role="alert"
-                className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200"
               >
-                {t(visibleErrorKey)}
+                {visibleErrorMessage}
               </p>
             ) : null}
 

@@ -1,29 +1,31 @@
 import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
-import {
-  handleError,
-  isNetworkError,
-  logDevError,
-  withTimeout,
-} from "@/lib/errors";
+import { handleError, isNetworkError } from "@/lib/errors";
 
 /**
  * Wallet provider options supported by the app.
+ *
+ * Email/password auth gates the app through our server session. Web3Auth Google
+ * and injected Solana wallets provide blockchain accounts.
  */
-export type WalletProvider = "magic" | "phantom" | null;
+export type WalletProvider =
+  | "email"
+  | "web3auth"
+  | "phantom"
+  | "solflare"
+  | null;
 
 /**
  * Complete wallet store shape.
  */
 export interface WalletStoreType {
   address: string | null;
+  email: string | null;
   connected: boolean;
   provider: WalletProvider;
   /**
-   * Tracks which email was used for Magic Link login.
-   * This improves UX (prefill + awareness) but is not sensitive by itself.
+   * Web3Auth connector name, for example "auth" or "wallet-connect-v2".
    */
-  magicEmail: string | null;
+  connectorName: string | null;
   /**
    * Ephemeral state: true while a connection attempt is in progress.
    * Not persisted to avoid stale UI on refresh.
@@ -41,28 +43,31 @@ export interface WalletStoreType {
  */
 export interface WalletStoreActions {
   /**
-   * Connect via Magic link (email-based).
-   *
-   * Flow:
-   * - Login with Magic Link (email)
-   * - Read the connected Solana account address
-   *
-   * Persisted fields (for UX): address/provider/magicEmail so the user stays "recognized".
-   * Reconnection: user can click "Connect" again to re-establish SDK session if needed.
+   * Persist an app auth session created by the server email/password flow.
    */
-  connectMagic: (email: string) => Promise<void>;
-
+  setEmailPasswordSession: (email: string) => void;
   /**
-   * Connect via Phantom wallet.
-   *
-   * Phantom requires the browser extension and works on desktop web.
+   * Persist a Web3Auth session after the React SDK reports a Solana account.
    */
-  connectPhantom: () => Promise<void>;
+  setWeb3AuthSession: (address: string, connectorName?: string | null) => void;
+  /**
+   * Persist an injected Solana wallet session after Phantom/Solflare connects.
+   */
+  setInjectedWalletSession: (
+    address: string,
+    provider: Exclude<WalletProvider, "email" | "web3auth" | null>,
+  ) => void;
 
   /**
    * Disconnect and clear wallet session.
    */
   disconnect: () => Promise<void>;
+
+  /**
+   * Allow SDK-driven hooks to mirror loading/error state in the store.
+   */
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
 
   /**
    * Clear the current error message.
@@ -74,196 +79,97 @@ export type WalletStore = WalletStoreType & WalletStoreActions;
 
 const initialState: WalletStoreType = {
   address: null,
+  email: null,
   connected: false,
   provider: null,
-  magicEmail: null,
+  connectorName: null,
   loading: false,
   error: null,
 };
 
-const storage =
-  typeof window === "undefined"
-    ? undefined
-    : createJSONStorage(() => window.localStorage);
-const WALLET_CONNECT_TIMEOUT_MS = 30_000;
-
-function cleanMagicErrorMessage(message: string): string {
-  return message
-    .replace(/^Magic login failed:\s*/i, "")
-    .replace(/^Magic sign\+send failed:\s*/i, "")
-    .replace(/^Magic RPC Error:\s*/i, "")
-    .replace(/^Magic SDK Error:\s*/i, "")
-    .trim();
-}
-
-function getWalletErrorMessage(
-  provider: Exclude<WalletProvider, null>,
-  error: unknown,
-): string {
+function getWalletErrorMessage(error: unknown): string {
   const appError = handleError(error);
   const message = appError.message;
 
-  if (/reject|denied|declined|cancel/i.test(message)) {
+  if (/reject|denied|declined|cancel|closed|popup/i.test(message)) {
+    if (/popup.*block|block.*popup/i.test(message)) {
+      return "The browser blocked the login popup. Please try again; login will continue in the same tab.";
+    }
+
     return "Connection was cancelled. You can try again when you are ready.";
   }
 
-  if (/PHANTOM_NOT_INSTALLED/i.test(message)) {
-    return "Phantom is not installed. Please install Phantom and try again.";
+  if (/invalid auth connection|authconnectionconfig|auth connection config|auth connection/i.test(message)) {
+    return "This login method is not enabled in the Web3Auth dashboard. Enable the provider, select the Web platform, and try again.";
+  }
+
+  if (/wallet|not installed|not available|unsupported/i.test(message)) {
+    return "This wallet is not available in the current browser. Try another option in the Web3Auth modal.";
   }
 
   if (isNetworkError(error) || appError.code === "TIMEOUT") {
     return "The network is taking longer than expected. Please check your connection and try again.";
   }
 
-  if (provider === "magic") {
-    const magicMessage = cleanMagicErrorMessage(message);
-
-    if (/api key|apikey|publishable|missing api|invalid key/i.test(magicMessage)) {
-      return "Magic Link is not configured correctly. Please check the publishable key and try again.";
-    }
-
-    if (/origin|domain|redirect|forbidden|unauthori|not allowed|access denied|localhost/i.test(magicMessage)) {
-      return "Magic Link is blocking this app URL. Add this localhost/domain in the Magic dashboard and try again.";
-    }
-
-    if (/email|deliverable|recipient|attempts|expired|verification/i.test(magicMessage)) {
-      return "We could not complete Magic Link login. Please check your email and try again.";
-    }
-
-    if (process.env.NODE_ENV === "development" && magicMessage) {
-      return `Magic Link error: ${magicMessage}`;
-    }
-
-    return "We could not complete Magic Link login. Please try again.";
+  if (/client.?id|whitelist|origin|domain|redirect|forbidden|unauthori|not allowed|access denied|localhost/i.test(message)) {
+    return "Web3Auth is not configured for this app URL. Check the client id and whitelist localhost/domain in the Web3Auth dashboard.";
   }
 
-  return "We could not connect to Phantom. Please check your wallet and try again.";
+  if (process.env.NODE_ENV === "development" && message) {
+    return `Web3Auth error: ${message}`;
+  }
+
+  return "We could not connect with Web3Auth. Please try again.";
 }
 
-export const useWalletStore = create<WalletStore>()(
-  persist(
-    (set, get) => ({
-      ...initialState,
+export function getWeb3AuthUserMessage(error: unknown): string {
+  return getWalletErrorMessage(error);
+}
 
-      connectMagic: async (email) => {
-        set({ loading: true, error: null });
-        try {
-          const address = await withTimeout(
-            (async () => {
-              // Wallet SDKs are loaded on demand to keep the initial app shell lean.
-              const magic = await import("@/lib/magic");
+export const useWalletStore = create<WalletStore>()((set) => ({
+  ...initialState,
 
-              // Ensure only one provider is active at a time.
-              if (get().provider === "phantom") {
-                const { disconnectPhantom } = await import("@/lib/phantom");
-                await disconnectPhantom();
-              }
+  setEmailPasswordSession: (email) => {
+    set({
+      address: null,
+      email,
+      connected: true,
+      provider: "email",
+      connectorName: "email-password",
+      loading: false,
+      error: null,
+    });
+  },
 
-              await magic.loginWithMagic(email);
-              return magic.getMagicWallet();
-            })(),
-            WALLET_CONNECT_TIMEOUT_MS,
-            "Magic wallet connection",
-          );
+  setWeb3AuthSession: (address, connectorName = null) => {
+    set({
+      address,
+      email: null,
+      connected: true,
+      provider: "web3auth",
+      connectorName,
+      loading: false,
+      error: null,
+    });
+  },
 
-          set({
-            address,
-            connected: true,
-            provider: "magic",
-            magicEmail: email,
-            loading: false,
-            error: null,
-          });
-        } catch (error) {
-          logDevError("[wallet] Magic connection failed", error);
-          set({
-            loading: false,
-            error: getWalletErrorMessage("magic", error),
-            connected: false,
-          });
-        }
-      },
+  setInjectedWalletSession: (address, provider) => {
+    set({
+      address,
+      email: null,
+      connected: true,
+      provider,
+      connectorName: provider,
+      loading: false,
+      error: null,
+    });
+  },
 
-      connectPhantom: async () => {
-        set({ loading: true, error: null });
+  disconnect: async () => {
+    set({ ...initialState });
+  },
 
-        try {
-          const address = await withTimeout(
-            (async () => {
-              // Phantom helpers are only needed once the user actively connects.
-              const phantom = await import("@/lib/phantom");
-
-              if (!phantom.isPhantomInstalled()) {
-                throw new Error("PHANTOM_NOT_INSTALLED");
-              }
-
-              // Ensure only one provider is active at a time.
-              if (get().provider === "magic") {
-                const { logout: magicLogout } = await import("@/lib/magic");
-                await magicLogout();
-              }
-
-              return phantom.connectPhantom();
-            })(),
-            WALLET_CONNECT_TIMEOUT_MS,
-            "Phantom wallet connection",
-          );
-
-          set({
-            address,
-            connected: true,
-            provider: "phantom",
-            magicEmail: null,
-            loading: false,
-            error: null,
-          });
-        } catch (error) {
-          logDevError("[wallet] Phantom connection failed", error);
-          set({
-            loading: false,
-            error: getWalletErrorMessage("phantom", error),
-            connected: false,
-          });
-        }
-      },
-
-      disconnect: async () => {
-        const provider = get().provider;
-        try {
-          if (provider === "magic") {
-            const { logout: magicLogout } = await import("@/lib/magic");
-            await magicLogout();
-          }
-          if (provider === "phantom") {
-            const { disconnectPhantom } = await import("@/lib/phantom");
-            await disconnectPhantom();
-          }
-        } catch (error) {
-          logDevError("[wallet] Disconnect cleanup failed", error);
-        } finally {
-          set({ ...initialState });
-        }
-      },
-
-      clearError: () => set({ error: null }),
-    }),
-    {
-      /**
-       * We persist address/provider for UX:
-       * - the UI can show the last connected wallet immediately
-       * - the user feels "still logged in"
-       *
-       * We do NOT persist magicEmail/loading/error because they are personal
-       * or ephemeral UI state.
-       */
-      name: "cyclos-wallet-store",
-      version: 1,
-      storage,
-      partialize: (state) => ({
-        address: state.address,
-        connected: state.connected,
-        provider: state.provider,
-      }),
-    },
-  ),
-);
+  setLoading: (loading) => set({ loading }),
+  setError: (error) => set({ error }),
+  clearError: () => set({ error: null }),
+}));

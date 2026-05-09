@@ -11,12 +11,13 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@magic-ext/solana": "^30.6.0",
+    "@babel/runtime": "^7.29.2",
     "@solana/web3.js": "^1.98.4",
+    "@web3auth/modal": "^10.16.0",
     "framer-motion": "^12.38.0",
-    "magic-sdk": "^33.7.0",
     "next": "15.5.18",
     "next-intl": "^4.11.0",
+    "pg": "^8.20.0",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -29,6 +30,7 @@
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.1",

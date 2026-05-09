@@ -73,7 +73,7 @@ Results:
 
 - Real-device iOS VoiceOver and Android TalkBack were not physically tested in this pass.
 - Mobile keyboard behavior was checked through field semantics and layout, not through an actual OS keyboard overlay.
-- Real Phantom/Magic wallet connection was not end-to-end tested on a mobile device during this QA pass.
+- Real Phantom/Web3Auth wallet connection was not end-to-end tested on a mobile device during this QA pass.
 - Telegram Mini App embedding should still be validated on a real Telegram client before production launch.
 - Lighthouse was not run in this pass; run it against the Vercel preview URL for final Core Web Vitals numbers.
 
@@ -81,6 +81,6 @@ Results:
 
 - Open the Vercel preview on iPhone and Android.
 - Test Telegram Mini App launch inside Telegram.
-- Connect with Phantom mobile and Magic Link test keys.
+- Connect with Phantom mobile and Web3Auth dashboard client id.
 - Verify QR copy flow with the real clipboard permission model.
 - Run Lighthouse mobile on the deployed HTTPS URL.

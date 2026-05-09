@@ -46,7 +46,7 @@ Static build artifact totals across all chunks:
 - All CSS chunks together: 8.6 KB gzip
 - All JS/CSS chunks together: 406.5 KB gzip
 
-Note: the all-chunks total includes lazy-loaded wallet, Solana, Magic, QR, and route chunks. It is not downloaded on first page load.
+Note: the all-chunks total includes wallet, Solana, Web3Auth, QR, and route chunks. It is not downloaded on first page load.
 
 ## Largest Client Assets
 
@@ -59,8 +59,7 @@ Note: the all-chunks total includes lazy-loaded wallet, Solana, Magic, QR, and r
 | Polyfills chunk | 38.6 KB |
 | Main runtime chunk | 34.7 KB |
 | Lazy Solana web3 chunk | 29.4 KB |
-| Lazy Magic SDK chunk | 17.2 KB |
-| Lazy Magic provider chunk | 14.4 KB |
+| Web3Auth SDK chunk | TBD after analyzer rerun |
 | `next-intl` / `use-intl` client chunk | 11.9 KB |
 | CSS | 8.6 KB |
 | Lazy QR code chunk | 5.8 KB |
@@ -74,7 +73,7 @@ Note: the all-chunks total includes lazy-loaded wallet, Solana, Magic, QR, and r
 | `@solana/web3.js` | 29.4 KB direct chunk, plus crypto dependencies | Lazy-loaded for RPC work |
 | `@noble/curves` | 16.8 KB | Solana crypto dependency |
 | App source | 16.0 KB | Pages, hooks, stores, UI |
-| `magic-sdk` + provider | 28.6 KB combined | Lazy-loaded only during Magic login |
+| `@web3auth/modal` | TBD after analyzer rerun | Used for Google embedded wallet login |
 | `next-intl` / `use-intl` | 11.8 KB | Shared client translations |
 | `qrcode.react` | 5.8 KB | Lazy-loaded on receive page |
 
@@ -85,7 +84,7 @@ Note: the all-chunks total includes lazy-loaded wallet, Solana, Magic, QR, and r
 - Removed `zustand/devtools` from the production wallet store bundle.
 - Lazy-loaded `TokenList` with `React.lazy` so token logo rendering and `next/image` code do not inflate the wallet first load.
 - Kept QR code rendering behind a dynamic import.
-- Kept Solana RPC utilities and Magic SDK helpers lazy-loaded behind user actions or balance/history fetches.
+- Kept Solana RPC utilities behind balance/history fetches and Web3Auth behind the login surface.
 - Used plain header action anchors on the wallet page to avoid adding an extra `next/link` chunk there.
 - Kept font loading optimized through `next/font` with `display: "swap"`.
 - Kept Tailwind CSS purged by the production build; final CSS is 8.6 KB gzip.

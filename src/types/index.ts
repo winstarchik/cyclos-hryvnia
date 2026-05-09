@@ -81,7 +81,7 @@ export interface Transaction {
 /**
  * Wallet provider options supported by the app.
  */
-export type WalletProvider = "magic" | "phantom" | null;
+export type WalletProvider = "web3auth" | "phantom" | "solflare" | null;
 
 /**
  * Zustand wallet store state (connection + selected provider).
@@ -93,6 +93,8 @@ export interface WalletState {
   connected: boolean;
   /** Current wallet provider. */
   provider: WalletProvider;
+  /** Web3Auth connector name, for example auth or wallet-connect-v2. */
+  connectorName?: string | null;
 }
 
 /**

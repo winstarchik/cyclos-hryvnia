@@ -3,11 +3,20 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import {
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+  Transaction as SolanaTransaction,
+} from "@solana/web3.js";
+import { useSignAndSendTransaction } from "@web3auth/modal/react/solana";
 import { Button } from "@/components/common/Button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { TOKENS } from "@/constants/tokens";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
+import { getInjectedSolanaWallet } from "@/lib/injectedSolana";
+import { connection as defaultSolanaConnection } from "@/lib/solana";
 import type { Balance, Token } from "@/types";
 
 const TOKEN_PRICE_USD: Record<string, number> = {
@@ -17,15 +26,7 @@ const TOKEN_PRICE_USD: Record<string, number> = {
   WBTC: 65_000,
 };
 
-const SUPPORTED_SEND_TOKENS: Token[] = [
-  TOKENS.cUAH,
-  TOKENS.SOL,
-  TOKENS.USDC,
-  TOKENS.WBTC,
-].map((token) => ({
-  ...token,
-  price: TOKEN_PRICE_USD[token.symbol] ?? token.price,
-}));
+const SOLANA_EXPLORER_URL = "https://explorer.solana.com/tx";
 
 function BackIcon() {
   return (
@@ -68,6 +69,18 @@ function normalizeAmount(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function amountToBaseUnits(value: string, decimals: number): bigint | null {
+  const normalized = value.replace(",", ".").trim();
+
+  if (!/^\d+(\.\d+)?$/.test(normalized)) return null;
+
+  const [wholePart, decimalPart = ""] = normalized.split(".");
+  const fractionalPart = decimalPart.padEnd(decimals, "0").slice(0, decimals);
+  const base = BigInt(10) ** BigInt(decimals);
+
+  return BigInt(wholePart || "0") * base + BigInt(fractionalPart || "0");
+}
+
 function formatNumberInput(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return "";
   return Number(value.toFixed(6)).toString();
@@ -78,19 +91,66 @@ function getTokenPriceUSD(token?: Token): number {
   return token.price ?? TOKEN_PRICE_USD[token.symbol] ?? 0;
 }
 
+function isValidPublicKey(value: string): boolean {
+  try {
+    new PublicKey(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isSendableToken(token: Token): boolean {
+  return token.symbol === TOKENS.SOL.symbol;
+}
+
+function uniqueTokenOptions(balances: Balance[]): Token[] {
+  const tokenMap = new Map<string, Token>();
+
+  tokenMap.set(TOKENS.SOL.symbol, {
+    ...TOKENS.SOL,
+    price: TOKEN_PRICE_USD.SOL,
+  });
+
+  const solBalance = balances.find(
+    (balance) => balance.token.symbol === TOKENS.SOL.symbol,
+  );
+
+  if (solBalance) {
+    tokenMap.set(TOKENS.SOL.symbol, {
+      ...solBalance.token,
+      price: getTokenPriceUSD(solBalance.token),
+    });
+  }
+
+  return Array.from(tokenMap.values());
+}
+
 export default function SendPage() {
   const t = useTranslations("send");
   const common = useTranslations("common");
   const locale = useLocale();
-  const { connected } = useWallet();
-  const { balances, loading } = useBalance();
+  const { address, connected, connection, provider } = useWallet();
+  const { signAndSendTransaction } = useSignAndSendTransaction();
+  const { balances, loading, refetch } = useBalance();
   const [recipient, setRecipient] = useState("");
-  const [selectedToken, setSelectedToken] = useState<Token>(TOKENS.cUAH);
+  const [selectedToken, setSelectedToken] = useState<Token>(TOKENS.SOL);
   const [amount, setAmount] = useState("");
   const [usdAmount, setUsdAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [txSignature, setTxSignature] = useState<string | null>(null);
+  const tokenOptions = useMemo(() => uniqueTokenOptions(balances), [balances]);
+  const activeConnection = connection ?? defaultSolanaConnection;
+
+  useEffect(() => {
+    if (tokenOptions.some((token) => token.symbol === selectedToken.symbol)) {
+      return;
+    }
+
+    setSelectedToken(tokenOptions[0] ?? TOKENS.SOL);
+  }, [selectedToken.symbol, tokenOptions]);
 
   useEffect(() => {
     const selectedBalanceToken = balances.find(
@@ -107,7 +167,8 @@ export default function SendPage() {
   }, [balances, selectedToken.symbol]);
 
   useEffect(() => {
-    setSuccess(false);
+    setSubmitError(null);
+    setTxSignature(null);
   }, [recipient, selectedToken, amount, usdAmount, memo]);
 
   const selectedBalance = useMemo(
@@ -120,19 +181,27 @@ export default function SendPage() {
   const tokenPriceUSD = getTokenPriceUSD(selectedToken);
   const numericAmount = normalizeAmount(amount);
   const numericUSD = normalizeAmount(usdAmount);
+  const recipientIsInvalid =
+    Boolean(recipient.trim()) && !isValidPublicKey(recipient.trim());
+  const unsupportedSelectedToken = !isSendableToken(selectedToken);
   const hasEnoughBalance =
     selectedBalance !== undefined && numericAmount <= selectedBalance.amount;
   const canSend =
     connected &&
+    Boolean(address) &&
+    Boolean(activeConnection) &&
     Boolean(recipient.trim()) &&
+    !recipientIsInvalid &&
     numericAmount > 0 &&
     hasEnoughBalance &&
+    !unsupportedSelectedToken &&
     !processing;
 
   function handleTokenChange(symbol: string) {
     const nextToken =
-      SUPPORTED_SEND_TOKENS.find((token) => token.symbol === symbol) ??
-      SUPPORTED_SEND_TOKENS[0];
+      tokenOptions.find((token) => token.symbol === symbol) ??
+      tokenOptions[0] ??
+      TOKENS.SOL;
     const nextPrice = getTokenPriceUSD(nextToken);
 
     setSelectedToken(nextToken);
@@ -171,11 +240,88 @@ export default function SendPage() {
     if (!canSend) return;
 
     setProcessing(true);
-    setSuccess(false);
+    setSubmitError(null);
+    setTxSignature(null);
 
     try {
-      await new Promise((resolve) => window.setTimeout(resolve, 500));
-      setSuccess(true);
+      if (!address || !activeConnection) {
+        throw new Error(t("connectWalletFirst"));
+      }
+
+      const fromPublicKey = new PublicKey(address);
+      const toPublicKey = new PublicKey(recipient.trim());
+      const transaction = new SolanaTransaction();
+
+      if (selectedToken.symbol !== TOKENS.SOL.symbol) {
+        throw new Error(t("unsupportedToken"));
+      }
+
+      const lamports = amountToBaseUnits(amount, 9);
+
+      if (!lamports || lamports <= BigInt(0)) {
+        throw new Error(t("invalidAmount"));
+      }
+
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: fromPublicKey,
+          lamports: Number(lamports),
+          toPubkey: toPublicKey,
+        }),
+      );
+
+      const latestBlockhash = await activeConnection.getLatestBlockhash(
+        "confirmed",
+      );
+      transaction.feePayer = fromPublicKey;
+      transaction.recentBlockhash = latestBlockhash.blockhash;
+
+      let signature: string;
+
+      if (provider === "web3auth") {
+        signature = await signAndSendTransaction(transaction);
+      } else {
+        const injectedWallet = getInjectedSolanaWallet();
+
+        if (!injectedWallet) {
+          throw new Error(t("connectWalletFirst"));
+        }
+
+        if (injectedWallet.provider.signAndSendTransaction) {
+          const result =
+            await injectedWallet.provider.signAndSendTransaction(transaction);
+          signature = typeof result === "string" ? result : result.signature;
+        } else if (injectedWallet.provider.signTransaction) {
+          const signedTransaction =
+            await injectedWallet.provider.signTransaction(transaction);
+          signature = await activeConnection.sendRawTransaction(
+            signedTransaction.serialize(),
+          );
+        } else {
+          throw new Error(t("sendError"));
+        }
+      }
+
+      await activeConnection.confirmTransaction(
+        {
+          blockhash: latestBlockhash.blockhash,
+          lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+          signature,
+        },
+        "confirmed",
+      );
+
+      setTxSignature(signature);
+      setAmount("");
+      setUsdAmount("");
+      setMemo("");
+      await refetch();
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to send transaction", error);
+      }
+
+      setSubmitError(error instanceof Error ? error.message : t("sendError"));
     } finally {
       setProcessing(false);
     }
@@ -195,6 +341,20 @@ export default function SendPage() {
     return balances.find(
       (balance) => balance.token.symbol.toLowerCase() === symbol.toLowerCase(),
     );
+  }
+
+  async function pasteRecipientFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        setRecipient(text.trim());
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to read recipient from clipboard", error);
+      }
+      setSubmitError(t("clipboardError"));
+    }
   }
 
   return (
@@ -235,7 +395,7 @@ export default function SendPage() {
               onChange={(event) => handleTokenChange(event.target.value)}
               value={selectedToken.symbol}
             >
-              {SUPPORTED_SEND_TOKENS.map((token) => {
+              {tokenOptions.map((token) => {
                 const tokenBalance = getTokenBalance(token.symbol);
                 return (
                 <option key={token.symbol} value={token.symbol}>
@@ -275,10 +435,21 @@ export default function SendPage() {
                 type="text"
                 value={recipient}
               />
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
+              <button
+                aria-label={t("pasteAddress")}
+                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-xl text-gray-500 transition hover:bg-white/[0.06] hover:text-white"
+                disabled={processing}
+                onClick={pasteRecipientFromClipboard}
+                type="button"
+              >
                 <ScanIcon />
-              </span>
+              </button>
             </div>
+            {recipientIsInvalid ? (
+              <p className="mt-3 text-sm text-red-300" role="alert">
+                {t("invalidRecipient")}
+              </p>
+            ) : null}
           </div>
 
           <div className="cy-card p-4">
@@ -327,6 +498,11 @@ export default function SendPage() {
             {numericAmount > 0 && !hasEnoughBalance ? (
               <p className="mt-3 text-sm text-red-300" role="alert">
                 {t("insufficientBalance")}
+              </p>
+            ) : null}
+            {unsupportedSelectedToken ? (
+              <p className="mt-3 text-sm text-red-300" role="alert">
+                {t("unsupportedToken")}
               </p>
             ) : null}
           </div>
@@ -398,13 +574,30 @@ export default function SendPage() {
             </div>
           ) : null}
 
-          {success ? (
+          {submitError ? (
             <p
+              className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-100"
+              role="alert"
+            >
+              {submitError}
+            </p>
+          ) : null}
+
+          {txSignature ? (
+            <div
               className="rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm leading-6 text-green-100"
               role="status"
             >
-              {t("readyMessage")}
-            </p>
+              <p>{t("transactionSent")}</p>
+              <a
+                className="mt-2 inline-flex font-semibold text-green-50 underline-offset-4 hover:underline"
+                href={`${SOLANA_EXPLORER_URL}/${txSignature}`}
+                rel="noreferrer"
+                target="_blank"
+              >
+                {t("viewOnExplorer")}
+              </a>
+            </div>
           ) : null}
 
           <Button
