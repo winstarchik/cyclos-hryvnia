@@ -103,6 +103,10 @@ function getWalletErrorMessage(error: unknown): string {
     return "This login method is not enabled in the Web3Auth dashboard. Enable the provider, select the Web platform, and try again.";
   }
 
+  if (/web3auth_no_provider/i.test(message)) {
+    return "Web3Auth did not return a wallet. Check that Google login is enabled for this project and domain.";
+  }
+
   if (/wallet|not installed|not available|unsupported/i.test(message)) {
     return "This wallet is not available in the current browser. Try another option in the Web3Auth modal.";
   }

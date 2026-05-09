@@ -191,7 +191,7 @@ export function useWallet(): UseWalletResult {
       let timeoutId: number | null = null;
 
       try {
-        await Promise.race([
+        const provider = await Promise.race([
           action(),
           new Promise((_, reject) => {
             timeoutId = window.setTimeout(() => {
@@ -199,6 +199,10 @@ export function useWallet(): UseWalletResult {
             }, WEB3AUTH_CONNECT_TIMEOUT_MS);
           }),
         ]);
+
+        if (!provider) {
+          throw new Error("WEB3AUTH_NO_PROVIDER");
+        }
       } catch (web3AuthError) {
         if (
           web3AuthError instanceof Error &&

@@ -6,7 +6,7 @@ import type { Balance, Token } from "@/types";
 
 const CACHE_DURATION_MS = 30_000;
 
-const TOKEN_PRICES_USD: Record<string, number> = {
+const FALLBACK_TOKEN_PRICES_USD: Record<string, number> = {
   SOL: 150,
   USDC: 1,
   cUAH: 0.024,
@@ -61,13 +61,49 @@ const initialState: BalanceStoreState = {
   selectedCurrency: "USD",
 };
 
-function getTokenPriceUSD(symbol: string): number {
-  // Token prices stubbed - integrate Jupiter API in Phase 2.
-  return TOKEN_PRICES_USD[symbol] ?? 0;
+async function fetchTokenPricesUSD(
+  symbols: string[],
+): Promise<Record<string, number>> {
+  const fallbackPrices = symbols.reduce<Record<string, number>>(
+    (prices, symbol) => {
+      prices[symbol] = FALLBACK_TOKEN_PRICES_USD[symbol] ?? 0;
+      return prices;
+    },
+    {},
+  );
+
+  try {
+    const params = new URLSearchParams({
+      symbols: Array.from(new Set(symbols)).join(","),
+    });
+    const response = await fetch(`/api/rpc/prices?${params.toString()}`, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return fallbackPrices;
+    }
+
+    const payload = (await response.json()) as {
+      data?: Record<string, number>;
+    };
+
+    return {
+      ...fallbackPrices,
+      ...(payload.data ?? {}),
+    };
+  } catch (error) {
+    logDevError("[balances] Failed to refresh token prices", error);
+    return fallbackPrices;
+  }
 }
 
-function createBalance(token: Token, amount: number): Balance {
-  const priceUSD = getTokenPriceUSD(token.symbol);
+function createBalance(
+  token: Token,
+  amount: number,
+  pricesUSD: Record<string, number>,
+): Balance {
+  const priceUSD = pricesUSD[token.symbol] ?? FALLBACK_TOKEN_PRICES_USD[token.symbol] ?? 0;
 
   return {
     token: {
@@ -143,10 +179,17 @@ export const useBalanceStore = create<BalanceStore>()((set, get) => ({
         getAllTokenAccounts(address),
       ]);
 
+      const tokens = [
+        { ...TOKENS.SOL },
+        ...tokenAccounts.map((account) => getTokenByMint(account.mint)),
+      ];
+      const pricesUSD = await fetchTokenPricesUSD(
+        tokens.map((token) => token.symbol),
+      );
       const balances = [
-        createBalance({ ...TOKENS.SOL }, solAmount),
-        ...tokenAccounts.map((account) =>
-          createBalance(getTokenByMint(account.mint), account.balance),
+        createBalance(tokens[0], solAmount, pricesUSD),
+        ...tokenAccounts.map((account, index) =>
+          createBalance(tokens[index + 1], account.balance, pricesUSD),
         ),
       ];
 
