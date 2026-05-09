@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale } from "next-intl";
+import { AnimatePresence, motion } from "framer-motion";
 
 type LocaleCode = "en" | "ua" | "ru";
 
@@ -157,49 +158,78 @@ export function LanguageSwitcher({ className = "" }: LanguageSwitcherProps) {
         </span>
       </button>
 
-      {isOpen ? (
-        <div
-          className="absolute right-0 mt-2 w-44 overflow-hidden rounded-2xl border border-white/10 bg-dark-900/95 p-1.5 shadow-[0_24px_70px_rgba(0,0,0,0.45)] backdrop-blur-xl"
-          role="listbox"
-        >
-          {LANGUAGE_OPTIONS.map((option) => {
-            const selected = option.code === currentLocale;
+      <AnimatePresence>
+        {isOpen ? (
+          <motion.div
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              transition: {
+                duration: 0.18,
+                ease: [0.22, 1, 0.36, 1],
+                staggerChildren: 0.035,
+              },
+            }}
+            className="absolute right-0 mt-2 w-44 origin-top-right overflow-hidden rounded-2xl border border-white/10 bg-dark-900/95 p-1.5 shadow-[0_24px_70px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+            exit={{
+              opacity: 0,
+              scale: 0.96,
+              y: -6,
+              transition: { duration: 0.12, ease: "easeOut" },
+            }}
+            initial={{ opacity: 0, scale: 0.96, y: -8 }}
+            role="listbox"
+          >
+            {LANGUAGE_OPTIONS.map((option) => {
+              const selected = option.code === currentLocale;
 
-            return (
-              <button
-                aria-selected={selected}
-                className={`flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-left transition ${
-                  selected
-                    ? "bg-accent-500/18 text-white"
-                    : "text-gray-300 hover:bg-dark-800 hover:text-white"
-                }`}
-                disabled={isPending}
-                key={option.code}
-                onClick={() => switchLocale(option.code)}
-                role="option"
-                type="button"
-              >
-                <span className="flex items-center gap-3">
-                  <span
-                    className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${
-                      selected
-                        ? "bg-accent-500 text-white"
-                        : "bg-dark-800 text-gray-300"
-                    }`}
-                  >
-                    {option.label}
+              return (
+                <motion.button
+                  animate={{ opacity: 1, x: 0 }}
+                  aria-selected={selected}
+                  className={`flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-left transition ${
+                    selected
+                      ? "bg-accent-500/18 text-white"
+                      : "text-gray-300 hover:bg-dark-800 hover:text-white"
+                  }`}
+                  disabled={isPending}
+                  exit={{ opacity: 0, x: -4 }}
+                  initial={{ opacity: 0, x: -8 }}
+                  key={option.code}
+                  onClick={() => switchLocale(option.code)}
+                  role="option"
+                  transition={{ duration: 0.16, ease: "easeOut" }}
+                  type="button"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <span className="flex items-center gap-3">
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold ${
+                        selected
+                          ? "bg-accent-500 text-white"
+                          : "bg-dark-800 text-gray-300"
+                      }`}
+                    >
+                      {option.label}
+                    </span>
+                    <span className="text-sm font-medium">{option.name}</span>
                   </span>
-                  <span className="text-sm font-medium">{option.name}</span>
-                </span>
 
-                {selected ? (
-                  <span className="h-2 w-2 rounded-full bg-accent-400 shadow-[0_0_14px_rgba(0,212,255,0.8)]" />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
+                  {selected ? (
+                    <motion.span
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="h-2 w-2 rounded-full bg-accent-400 shadow-[0_0_14px_rgba(0,212,255,0.8)]"
+                      initial={{ opacity: 0, scale: 0 }}
+                      transition={{ duration: 0.16 }}
+                    />
+                  ) : null}
+                </motion.button>
+              );
+            })}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       </div>
     </div>
   );
