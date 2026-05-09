@@ -80,6 +80,7 @@ export function WalletLoginPage() {
   const [showSlowConnection, setShowSlowConnection] = useState(false);
   const web3AuthConfigured = hasWeb3AuthClientId();
   const isConnecting = Boolean(loadingAction) || walletLoading;
+  const isWalletModalActive = loadingAction === "wallet";
   const visibleErrorMessage = localErrorKey
     ? t(localErrorKey)
     : walletError === INJECTED_SOLANA_WALLET_NOT_FOUND
@@ -128,7 +129,8 @@ export function WalletLoginPage() {
       <div aria-hidden="true" className="animate-gradient-shift absolute inset-0" />
 
       <div className="relative z-10 flex w-full flex-1 items-center justify-center pb-[max(env(safe-area-inset-bottom),2rem)] pt-[max(env(safe-area-inset-top),2rem)]">
-        <section className="animate-fade-in-up w-full max-w-sm">
+        {!isWalletModalActive ? (
+        <section className="animate-fade-in-up w-full max-w-sm transition-opacity duration-200">
           <div className="mb-7 text-center">
             <CUAHCoin />
             <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-accent-400">
@@ -206,7 +208,7 @@ export function WalletLoginPage() {
                 className="h-12 rounded-2xl text-sm"
                 disabled={isConnecting}
                 fullWidth
-                isLoading={loadingAction === "wallet"}
+                isLoading={false}
                 loadingText={common("connecting")}
                 onClick={() => runAuthAction("wallet", connectWallet)}
                 size="md"
@@ -248,6 +250,7 @@ export function WalletLoginPage() {
             </p>
           </div>
         </section>
+        ) : null}
       </div>
     </main>
   );
