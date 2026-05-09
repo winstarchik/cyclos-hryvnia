@@ -93,8 +93,10 @@ const web3AuthOptions: Web3AuthOptions = {
     loginMethodsOrder: [AUTH_CONNECTION.GOOGLE],
   },
   modalConfig: {
-    // Existing Solana wallets use the injected provider flow in the app UI.
-    hideWalletDiscovery: true,
+    // Web3Auth Modal v10 discovers supported external wallets from the browser
+    // and WalletConnect. Keep discovery visible so Phantom/Solflare appear next
+    // to the configured social login.
+    hideWalletDiscovery: false,
     connectors: {
       [WALLET_CONNECTORS.AUTH]: {
         label: "Social login",

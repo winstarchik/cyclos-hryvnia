@@ -177,7 +177,12 @@ export function useWallet(): UseWalletResult {
   }, [setError, setLoading, web3AuthConnectError, web3AuthDisconnectError]);
 
   const connectWithWeb3Auth = useCallback(
-    async (action: () => Promise<unknown>) => {
+    async (
+      action: () => Promise<unknown>,
+      options: { timeoutMs?: number | null } = {
+        timeoutMs: WEB3AUTH_CONNECT_TIMEOUT_MS,
+      },
+    ) => {
       if (!hasWeb3AuthClientId()) {
         setError(
           "Web3Auth is not configured yet. Add NEXT_PUBLIC_WEB3AUTH_CLIENT_ID.",
@@ -191,14 +196,16 @@ export function useWallet(): UseWalletResult {
       let timeoutId: number | null = null;
 
       try {
-        const provider = await Promise.race([
-          action(),
-          new Promise((_, reject) => {
-            timeoutId = window.setTimeout(() => {
-              reject(new Error("WEB3AUTH_CONNECT_TIMEOUT"));
-            }, WEB3AUTH_CONNECT_TIMEOUT_MS);
-          }),
-        ]);
+        const provider = options.timeoutMs
+          ? await Promise.race([
+              action(),
+              new Promise((_, reject) => {
+                timeoutId = window.setTimeout(() => {
+                  reject(new Error("WEB3AUTH_CONNECT_TIMEOUT"));
+                }, options.timeoutMs ?? WEB3AUTH_CONNECT_TIMEOUT_MS);
+              }),
+            ])
+          : await action();
 
         if (!provider) {
           throw new Error("WEB3AUTH_NO_PROVIDER");
@@ -225,7 +232,7 @@ export function useWallet(): UseWalletResult {
   );
 
   const connectWallet = useCallback(async () => {
-    await connectWithWeb3Auth(() => connect());
+    await connectWithWeb3Auth(() => connect(), { timeoutMs: null });
   }, [connect, connectWithWeb3Auth]);
 
   const connectSocial = useCallback(

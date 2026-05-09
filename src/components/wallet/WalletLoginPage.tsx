@@ -66,7 +66,7 @@ export function WalletLoginPage() {
   const router = useRouter();
   const {
     connectGoogle,
-    connectExternalWallet,
+    connectWallet,
     connected,
     loading: walletLoading,
     error: walletError,
@@ -208,7 +208,7 @@ export function WalletLoginPage() {
                 fullWidth
                 isLoading={loadingAction === "wallet"}
                 loadingText={common("connecting")}
-                onClick={() => runAuthAction("wallet", connectExternalWallet)}
+                onClick={() => runAuthAction("wallet", connectWallet)}
                 size="md"
                 type="button"
                 variant="secondary"
