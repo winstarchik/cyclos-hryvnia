@@ -2,15 +2,15 @@
 
 ## Architecture
 
-Cyclos Hryvnia is a Telegram Mini App and wallet UI with server-side passwordless app authentication.
+Cyclos Hryvnia is a Telegram Mini App and wallet UI with server-side email/password account authentication.
 
-Email login uses a one-time code sent through SMTP. The OTP token is signed, short-lived, and stored in an HttpOnly cookie until verification. Browser sessions are signed and stored in an HttpOnly cookie.
+Email login and registration use a one-time code sent through SMTP before password verification or password creation. Passwords are hashed with `scrypt` and random salts. OTP tokens and browser sessions are signed and stored in HttpOnly cookies.
 
 The app does not store wallet private keys, seed phrases, user balances, transaction history, or Telegram profile data on the server in the MVP.
 
 Wallet access is delegated to wallet providers:
 
-- App email-code authentication is handled by `/api/auth/email/*` routes.
+- App account authentication is handled by `/api/auth/email/*`, `/api/auth/login`, `/api/auth/register`, and `/api/auth/password/*` routes.
 - Web3Auth handles non-custodial Google embedded wallet authentication.
 - External wallets such as Phantom and Solflare handle private keys inside their own wallet apps/extensions.
 - The app reads public Solana addresses, balances, and transaction history from Solana RPC.
@@ -30,13 +30,14 @@ Server-only variables:
 
 - `TELEGRAM_BOT_TOKEN`
 - `AUTH_SECRET`
+- `DATABASE_URL`
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_USER`
 - `SMTP_PASS`
 - `SMTP_FROM`
 
-Never prefix private keys, bot tokens, SMTP credentials, signing secrets, or webhook secrets with `NEXT_PUBLIC_`. Next.js embeds `NEXT_PUBLIC_` values into browser bundles.
+Never prefix private keys, bot tokens, database URLs, SMTP credentials, signing secrets, or webhook secrets with `NEXT_PUBLIC_`. Next.js embeds `NEXT_PUBLIC_` values into browser bundles.
 
 Local secrets belong in `.env.local`, which is ignored by git. Vercel secrets must be configured in Project Settings -> Environment Variables, scoped separately for Production, Preview, and Development.
 
@@ -44,17 +45,20 @@ Local secrets belong in `.env.local`, which is ignored by git. Vercel secrets mu
 
 - No private keys are stored in this repository.
 - No Web3Auth secret keys are used in the frontend; only the public client id is expected.
-- SMTP credentials and auth signing secrets are server-only and must never use the `NEXT_PUBLIC_` prefix.
+- Database URLs, SMTP credentials, and auth signing secrets are server-only and must never use the `NEXT_PUBLIC_` prefix.
 - Wallet addresses are public identifiers and may appear in UI state.
 - The wallet store keeps only ephemeral auth state in memory. The durable app login is an HttpOnly cookie.
-- The app does not persist private keys, seed phrases, signed transactions, bot tokens, or SMTP credentials in browser storage.
+- The app does not persist private keys, seed phrases, signed transactions, bot tokens, database URLs, or SMTP credentials in browser storage.
 
 ## Account Auth Security
 
-- `POST /api/auth/email/request-code` validates email and sends a one-time code.
-- `POST /api/auth/email/verify-code` verifies the signed OTP cookie and user-entered code.
-- OTP and session signatures use timing-safe comparison.
-- Auth routes validate email/code shape before touching external services.
+- `POST /api/auth/email/request-code` validates email, checks account existence for the chosen mode, and sends a one-time code.
+- `POST /api/auth/register` verifies the signed OTP cookie, confirms matching passwords, hashes the password, and creates the user.
+- `POST /api/auth/login` verifies the signed OTP cookie and account password.
+- `POST /api/auth/password/forgot` sends a signed recovery link without revealing whether an email exists.
+- `POST /api/auth/password/reset` verifies the signed recovery link, updates the stored password hash, and invalidates old reset links.
+- OTP, reset-token, password, and session checks use timing-safe comparisons where applicable.
+- Auth routes validate email/code/password shape before touching external services.
 - Auth routes include a lightweight per-IP/per-email rate limit. Production should add a persistent limiter such as Upstash Redis or Vercel Firewall rules.
 - Session cookies are HttpOnly, SameSite=Lax, path-scoped to `/`, and Secure in production.
 
@@ -86,7 +90,10 @@ Current API surface:
 
 - `GET /api/health`: public health endpoint for uptime monitoring.
 - `POST /api/auth/email/request-code`: public OTP request endpoint with validation and rate limiting.
-- `POST /api/auth/email/verify-code`: public OTP verification endpoint with validation and rate limiting.
+- `POST /api/auth/register`: public registration endpoint with OTP, password validation, hashing, and rate limiting.
+- `POST /api/auth/login`: public login endpoint with OTP, password validation, and rate limiting.
+- `POST /api/auth/password/forgot`: public password recovery email endpoint with rate limiting.
+- `POST /api/auth/password/reset`: public password reset endpoint with signed-token validation and rate limiting.
 - `GET /api/auth/session`: reads the current HttpOnly app session.
 - `DELETE /api/auth/session`: clears the current app session.
 
@@ -129,6 +136,7 @@ High advisories found during the audit were remediated by removing unused or rep
 Known tracked exception:
 
 - `GHSA-qx2v-qp2m-jg93` in `postcss` is currently pulled by stable Next.js (`next -> postcss@8.4.31`). The project tracks this exception in `pnpm-workspace.yaml` and should remove it once stable Next.js depends on `postcss >= 8.5.10`. The app does not stringify untrusted user-provided CSS.
+- `GHSA-848j-6mx2-7j84` in `elliptic` is currently pulled transitively by Web3Auth/Torus packages. npm currently reports `elliptic@6.6.1` as latest, so there is no installable patched release to override to yet. Re-check after Web3Auth/Torus publishes updated dependency ranges.
 
 ## Incident Response
 

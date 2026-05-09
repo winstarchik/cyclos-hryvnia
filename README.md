@@ -8,7 +8,7 @@ Cyclos Hryvnia is a non-custodial crypto wallet interface for Ukrainian users, w
 
 The app lets users:
 
-- Sign in with a passwordless email code
+- Sign in or register with email verification and password
 - Sign in with Google through Web3Auth embedded wallet auth
 - Connect external Solana wallets such as Phantom and Solflare
 - View balances across Solana tokens through `NEXT_PUBLIC_SOLANA_RPC`
@@ -24,7 +24,7 @@ The app lets users:
 - **Animations**: Framer Motion
 - **State**: Zustand
 - **Blockchain**: Solana Web3.js
-- **Auth and wallets**: Email OTP, Web3Auth Google, Phantom/Solflare
+- **Auth and wallets**: Email/password accounts, Web3Auth Google, Phantom/Solflare
 - **TMA**: Telegram Mini App browser context
 - **Deployment**: Vercel
 - **i18n**: next-intl (EN/UA/RU)
@@ -32,14 +32,22 @@ The app lets users:
 
 ## Auth Architecture
 
-The primary login path is passwordless email:
+The primary login path is email plus password with email-code verification:
 
 1. User clicks **Continue with Email**.
 2. The app opens `/[locale]/email-login`.
 3. User enters an email address.
 4. `POST /api/auth/email/request-code` sends a 6-digit one-time code through SMTP and stores a signed OTP cookie.
 5. User enters the code.
-6. `POST /api/auth/email/verify-code` verifies the code, creates an HttpOnly session cookie, and redirects to the wallet.
+6. Login users enter the account password. Registration users create and repeat a new password.
+7. `POST /api/auth/login` or `POST /api/auth/register` verifies the code and password, creates an HttpOnly session cookie, and redirects to the wallet.
+
+Password recovery:
+
+1. User opens **Forgot password?**.
+2. `POST /api/auth/password/forgot` sends a signed reset link by email.
+3. User enters a new password twice on `/[locale]/reset-password`.
+4. `POST /api/auth/password/reset` updates the stored password hash and starts a new session.
 
 Alternative login paths:
 
@@ -73,7 +81,7 @@ Before testing Google or external wallet auth:
 ### MVP
 
 - Telegram Mini App-ready layout
-- Passwordless email-code login
+- Email/password registration and login with email-code verification
 - Web3Auth Google embedded wallet login
 - External Solana wallet connection with Phantom/Solflare
 - SOL + SPL token balance reads
@@ -102,6 +110,7 @@ Before testing Google or external wallet auth:
 - pnpm 8.5+
 - Solana RPC endpoint
 - SMTP mailbox or email provider for one-time login codes
+- Postgres `DATABASE_URL` for production account storage
 - Auth secret for signed HttpOnly session cookies
 - Web3Auth project/client id for Google and wallet login
 - Telegram bot for TMA launch
@@ -139,6 +148,7 @@ NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
 # Server-only values, never prefix with NEXT_PUBLIC_
 TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-secret
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/cyclos
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_USER=your@gmail.com
@@ -150,7 +160,7 @@ NEXT_PUBLIC_ENVIRONMENT=production
 ANALYZE=false
 ```
 
-For Gmail SMTP, use a Google app password, not the mailbox password.
+For Gmail SMTP, use a Google app password, not the mailbox password. Local development can run without `DATABASE_URL`; it uses `.data/cyclos-users.json`, which is ignored by git. Production must use Postgres.
 
 ## Project Structure
 
@@ -214,7 +224,9 @@ Recommended manual checks:
 - Open `/en`, `/ua`, and `/ru`
 - Click **Continue with Email** and confirm `/[locale]/email-login` opens
 - Enter an invalid email and confirm a friendly validation message appears
-- Configure SMTP, request a code, verify it, and confirm the app redirects to `/[locale]/wallet`
+- Configure SMTP, register with email code + repeated password, and confirm the app redirects to `/[locale]/wallet`
+- Login with the same email, email code, and password
+- Use **Forgot password?**, open the reset link, set a new password twice, and confirm access works
 - Click **Continue with Google** and confirm Web3Auth starts the Google flow when the domain is whitelisted
 - Confirm Phantom/Solflare external wallet connection works when a supported wallet is installed
 - Confirm protected pages redirect when disconnected
@@ -234,7 +246,7 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for current notes.
 ## Security
 
 - No private keys are stored in the frontend
-- Email login uses signed short-lived OTP cookies and HttpOnly session cookies
+- Email login uses signed short-lived OTP cookies, hashed passwords, and HttpOnly session cookies
 - Web3Auth handles embedded wallet creation for Google login
 - External wallets keep key management inside their own wallet apps/extensions
 - Server-only secrets must not use the `NEXT_PUBLIC_` prefix

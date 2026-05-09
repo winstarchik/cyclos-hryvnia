@@ -5,8 +5,11 @@ import { getAuthSecret } from "@/lib/env";
 export const OTP_COOKIE_NAME = "cyclos_email_otp";
 const OTP_TTL_SECONDS = 60 * 10;
 
+export type OtpPurpose = "login" | "register";
+
 interface OtpPayload {
   email: string;
+  purpose: OtpPurpose;
   codeHash: string;
   exp: number;
 }
@@ -27,10 +30,15 @@ export function generateEmailCode() {
   return randomInt(100_000, 1_000_000).toString();
 }
 
-export function createOtpToken(email: string, code: string) {
+export function createOtpToken(
+  email: string,
+  code: string,
+  purpose: OtpPurpose,
+) {
   const payload: OtpPayload = {
     codeHash: hashCode(email, code),
     email: email.trim().toLowerCase(),
+    purpose,
     exp: Math.floor(Date.now() / 1000) + OTP_TTL_SECONDS,
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -43,6 +51,7 @@ export function verifyOtpToken(
   token: string | undefined,
   email: string,
   code: string,
+  purpose: OtpPurpose,
 ) {
   if (!token) {
     return { ok: false, reason: "missing" as const };
@@ -72,6 +81,10 @@ export function verifyOtpToken(
     }
 
     if (payload.email !== normalizedEmail) {
+      return { ok: false, reason: "invalid" as const };
+    }
+
+    if (payload.purpose !== purpose) {
       return { ok: false, reason: "invalid" as const };
     }
 

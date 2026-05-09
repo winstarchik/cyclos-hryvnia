@@ -10,6 +10,7 @@ import { hasWeb3AuthClientId } from "@/lib/env";
 import { INJECTED_SOLANA_WALLET_NOT_FOUND } from "@/lib/injectedSolana";
 
 type AuthAction = "google" | "wallet";
+type AuthMode = "login" | "register";
 
 function CUAHCoin() {
   return (
@@ -73,6 +74,7 @@ export function WalletLoginPage() {
   } = useWallet();
 
   const errorId = useId();
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [loadingAction, setLoadingAction] = useState<AuthAction | null>(null);
   const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
   const [showSlowConnection, setShowSlowConnection] = useState(false);
@@ -141,15 +143,42 @@ export function WalletLoginPage() {
           </div>
 
           <div className="cy-card-soft p-4 sm:p-5">
-            <p className="text-sm leading-6 text-gray-400">{t("loginHint")}</p>
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-dark-800 bg-dark-950/70 p-1">
+              {(["login", "register"] as const).map((mode) => (
+                <button
+                  aria-pressed={authMode === mode}
+                  className={`min-h-11 rounded-xl text-sm font-semibold transition ${
+                    authMode === mode
+                      ? "bg-accent-500 text-white shadow-lg shadow-accent-600/20"
+                      : "text-gray-400 hover:bg-dark-900 hover:text-white"
+                  }`}
+                  disabled={isConnecting}
+                  key={mode}
+                  onClick={() => {
+                    setAuthMode(mode);
+                    setLocalErrorKey(null);
+                    clearError();
+                  }}
+                  type="button"
+                >
+                  {mode === "login" ? t("login") : t("register")}
+                </button>
+              ))}
+            </div>
+
+            <p className="mt-5 text-sm leading-6 text-gray-400">
+              {authMode === "login" ? t("loginHint") : t("registerHint")}
+            </p>
 
             <div className="mt-5 space-y-3" aria-busy={isConnecting} aria-live="polite">
               <Link
                 className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 transition hover:scale-[1.02] hover:from-accent-600 hover:to-accent-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/60 active:scale-[0.98] motion-reduce:transition-none"
-                href={`/${locale}/email-login`}
+                href={`/${locale}/email-login?mode=${authMode}`}
               >
                 <ProviderMark>@</ProviderMark>
-                {t("continueWithEmail")}
+                {authMode === "login"
+                  ? t("loginWithEmail")
+                  : t("createAccountWithEmail")}
               </Link>
 
               <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">

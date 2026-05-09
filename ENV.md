@@ -19,13 +19,14 @@ This project uses public browser-safe variables for wallet and RPC setup, and se
 
 - `TELEGRAM_BOT_TOKEN`: Telegram bot token. Never prefix this with `NEXT_PUBLIC_`.
 - `AUTH_SECRET`: Long random secret used to sign the HttpOnly app session cookie.
-- `SMTP_HOST`: SMTP host used to send passwordless login codes.
+- `DATABASE_URL`: Production Postgres connection string for account storage. Local development can run without it and uses `.data/cyclos-users.json`.
+- `SMTP_HOST`: SMTP host used to send email verification codes and password recovery links.
 - `SMTP_PORT`: SMTP port, usually `465` for SSL or `587` for STARTTLS.
 - `SMTP_USER`: SMTP username or sender mailbox.
 - `SMTP_PASS`: SMTP password or provider app password.
 - `SMTP_FROM`: Sender label, for example `Cyclos <wallet@example.com>`.
 
-Next.js embeds every `NEXT_PUBLIC_` variable into browser bundles. Keep private keys, bot tokens, SMTP credentials, signing secrets, and webhook secrets server-side only.
+Next.js embeds every `NEXT_PUBLIC_` variable into browser bundles. Keep private keys, bot tokens, database URLs, SMTP credentials, signing secrets, and webhook secrets server-side only.
 
 ## Local Setup
 
@@ -44,6 +45,8 @@ NEXT_PUBLIC_WEB3AUTH_REDIRECT_URL=http://localhost:3000
 NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
 TELEGRAM_BOT_TOKEN=TEST_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-local-secret
+# Optional locally, required in production
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/cyclos
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_USER=your@gmail.com
@@ -72,6 +75,7 @@ NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=...
 AUTH_SECRET=...
+DATABASE_URL=...
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_USER=...

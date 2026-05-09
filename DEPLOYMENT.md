@@ -35,6 +35,7 @@ NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-secret
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/cyclos
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_USER=your@gmail.com
@@ -46,7 +47,7 @@ Notes:
 
 - `NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID` is optional and only needed for a custom Web3Auth Google auth connection.
 - `TELEGRAM_BOT_TOKEN` is server-only. Never expose it with the `NEXT_PUBLIC_` prefix.
-- `AUTH_SECRET` and `SMTP_*` are server-only. They power the passwordless email-code login.
+- `DATABASE_URL`, `AUTH_SECRET`, and `SMTP_*` are server-only. They power email/password auth, verification codes, and password recovery.
 - Gmail requires an app password for SMTP; do not use the normal mailbox password.
 - Use separate Web3Auth/Solana/TMA values for development, preview, and production where possible.
 
@@ -175,6 +176,7 @@ NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-secret
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/cyclos
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_USER=your@gmail.com

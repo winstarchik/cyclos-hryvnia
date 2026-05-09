@@ -52,6 +52,16 @@ export function getTelegramBotToken(): string {
 }
 
 /**
+ * Server-only Postgres connection string.
+ *
+ * Production account auth requires this value. Local development can use the
+ * file-backed dev account store when this variable is not present.
+ */
+export function getDatabaseUrl(): string | undefined {
+  return process.env.DATABASE_URL;
+}
+
+/**
  * Server-only HMAC secret used to sign the app session cookie.
  */
 export function getAuthSecret(): string {
