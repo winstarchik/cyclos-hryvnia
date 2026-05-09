@@ -61,6 +61,8 @@
     "emailAccountMissing": "Акаунт із цим email не знайдено. Спочатку зареєструйтеся.",
     "emailAccountExists": "Акаунт із цим email уже існує. Увійдіть замість реєстрації.",
     "authDependencyError": "Перевірка акаунта тимчасово недоступна. Спробуйте ще раз.",
+    "emailDeliveryUnavailable": "Доставка email-коду тимчасово недоступна. Спробуйте ще раз.",
+    "developmentEmailCode": "Код для локального тесту: {code}",
     "finishRegistration": "Створити акаунт",
     "forgotPassword": "Забули пароль?",
     "forgotPasswordTitle": "Відновлення пароля",

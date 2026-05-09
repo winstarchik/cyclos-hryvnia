@@ -23,6 +23,13 @@ function maskEmail(email: string) {
   return `${visible}${"*".repeat(Math.max(2, name.length - 2))}@${domain}`;
 }
 
+function isMissingSmtpConfig(error: unknown) {
+  return (
+    error instanceof Error &&
+    /missing smtp configuration/i.test(error.message)
+  );
+}
+
 function parseMode(mode: unknown): OtpPurpose | null {
   return mode === "login" || mode === "register" ? mode : null;
 }
@@ -56,26 +63,41 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let existingUser: Awaited<ReturnType<typeof findUserByEmail>>;
+
   try {
-    const existingUser = await findUserByEmail(email);
-
-    if (mode === "login" && !existingUser) {
-      return authError(
-        "ACCOUNT_NOT_FOUND",
-        "No account was found for this email. Register first.",
-        404,
-      );
+    existingUser = await findUserByEmail(email);
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Account lookup failed:", error);
     }
 
-    if (mode === "register" && existingUser) {
-      return authError(
-        "ACCOUNT_EXISTS",
-        "An account with this email already exists. Sign in instead.",
-        409,
-      );
-    }
+    return authError(
+      "AUTH_DEPENDENCY_UNAVAILABLE",
+      "Account verification is temporarily unavailable. Please try again shortly.",
+      503,
+    );
+  }
 
-    const code = generateEmailCode();
+  if (mode === "login" && !existingUser) {
+    return authError(
+      "ACCOUNT_NOT_FOUND",
+      "No account was found for this email. Register first.",
+      404,
+    );
+  }
+
+  if (mode === "register" && existingUser) {
+    return authError(
+      "ACCOUNT_EXISTS",
+      "An account with this email already exists. Sign in instead.",
+      409,
+    );
+  }
+
+  const code = generateEmailCode();
+
+  try {
     await sendAuthCodeEmail(email, code, mode);
 
     const response = NextResponse.json({
@@ -89,11 +111,27 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
       console.error("Email code request failed:", error);
+
+      if (isMissingSmtpConfig(error)) {
+        const response = NextResponse.json({
+          status: "ok",
+          data: {
+            devCode: code,
+            maskedEmail: maskEmail(email),
+          },
+        });
+
+        return attachOtpCookie(response, createOtpToken(email, code, mode));
+      }
     }
 
     return authError(
-      "AUTH_DEPENDENCY_UNAVAILABLE",
-      "Account verification is temporarily unavailable. Please try again shortly.",
+      isMissingSmtpConfig(error)
+        ? "EMAIL_DELIVERY_UNAVAILABLE"
+        : "AUTH_DEPENDENCY_UNAVAILABLE",
+      isMissingSmtpConfig(error)
+        ? "Email delivery is temporarily unavailable. Please try again shortly."
+        : "Account verification is temporarily unavailable. Please try again shortly.",
       503,
     );
   }
