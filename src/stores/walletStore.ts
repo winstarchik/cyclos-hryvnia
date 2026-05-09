@@ -4,8 +4,8 @@ import { handleError, isNetworkError } from "@/lib/errors";
 /**
  * Wallet provider options supported by the app.
  *
- * Email/password auth gates the app through our server session. Web3Auth Google
- * and injected Solana wallets provide blockchain accounts.
+ * Email-code auth gates the app through our server session. Web3Auth Google and
+ * injected Solana wallets provide blockchain accounts.
  */
 export type WalletProvider =
   | "email"
@@ -43,7 +43,7 @@ export interface WalletStoreType {
  */
 export interface WalletStoreActions {
   /**
-   * Persist an app auth session created by the server email/password flow.
+   * Persist an app auth session created by the server email-code flow.
    */
   setEmailPasswordSession: (email: string) => void;
   /**
@@ -135,7 +135,7 @@ export const useWalletStore = create<WalletStore>()((set) => ({
       email,
       connected: true,
       provider: "email",
-      connectorName: "email-password",
+      connectorName: "email-code",
       loading: false,
       error: null,
     });

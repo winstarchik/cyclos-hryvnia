@@ -2,15 +2,15 @@
 
 ## Architecture
 
-Cyclos Hryvnia is a Telegram Mini App and wallet UI with server-side app account authentication.
+Cyclos Hryvnia is a Telegram Mini App and wallet UI with server-side passwordless app authentication.
 
-The app stores email/password account records in Postgres. Passwords are never stored in plaintext; they are hashed with `scrypt` and a random salt. Browser sessions are signed and stored in an HttpOnly cookie.
+Email login uses a one-time code sent through SMTP. The OTP token is signed, short-lived, and stored in an HttpOnly cookie until verification. Browser sessions are signed and stored in an HttpOnly cookie.
 
 The app does not store wallet private keys, seed phrases, user balances, transaction history, or Telegram profile data on the server in the MVP.
 
 Wallet access is delegated to wallet providers:
 
-- App email/password accounts are handled by `/api/auth/*` routes and Postgres.
+- App email-code authentication is handled by `/api/auth/email/*` routes.
 - Web3Auth handles non-custodial Google embedded wallet authentication.
 - External wallets such as Phantom and Solflare handle private keys inside their own wallet apps/extensions.
 - The app reads public Solana addresses, balances, and transaction history from Solana RPC.
@@ -29,10 +29,14 @@ Public browser-safe variables:
 Server-only variables:
 
 - `TELEGRAM_BOT_TOKEN`
-- `DATABASE_URL`
 - `AUTH_SECRET`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
 
-Never prefix private keys, bot tokens, database URLs, signing secrets, or webhook secrets with `NEXT_PUBLIC_`. Next.js embeds `NEXT_PUBLIC_` values into browser bundles.
+Never prefix private keys, bot tokens, SMTP credentials, signing secrets, or webhook secrets with `NEXT_PUBLIC_`. Next.js embeds `NEXT_PUBLIC_` values into browser bundles.
 
 Local secrets belong in `.env.local`, which is ignored by git. Vercel secrets must be configured in Project Settings -> Environment Variables, scoped separately for Production, Preview, and Development.
 
@@ -40,17 +44,17 @@ Local secrets belong in `.env.local`, which is ignored by git. Vercel secrets mu
 
 - No private keys are stored in this repository.
 - No Web3Auth secret keys are used in the frontend; only the public client id is expected.
-- Database URLs and auth signing secrets are server-only and must never use the `NEXT_PUBLIC_` prefix.
+- SMTP credentials and auth signing secrets are server-only and must never use the `NEXT_PUBLIC_` prefix.
 - Wallet addresses are public identifiers and may appear in UI state.
 - The wallet store keeps only ephemeral auth state in memory. The durable app login is an HttpOnly cookie.
-- The app does not persist private keys, seed phrases, signed transactions, bot tokens, or database credentials in browser storage.
+- The app does not persist private keys, seed phrases, signed transactions, bot tokens, or SMTP credentials in browser storage.
 
 ## Account Auth Security
 
-- `POST /api/auth/register` creates a Postgres user only when the email is not already registered.
-- `POST /api/auth/login` checks that the email exists before verifying the password.
-- Password verification uses timing-safe comparison.
-- Auth routes validate email/password shape before touching the database.
+- `POST /api/auth/email/request-code` validates email and sends a one-time code.
+- `POST /api/auth/email/verify-code` verifies the signed OTP cookie and user-entered code.
+- OTP and session signatures use timing-safe comparison.
+- Auth routes validate email/code shape before touching external services.
 - Auth routes include a lightweight per-IP/per-email rate limit. Production should add a persistent limiter such as Upstash Redis or Vercel Firewall rules.
 - Session cookies are HttpOnly, SameSite=Lax, path-scoped to `/`, and Secure in production.
 
@@ -81,14 +85,14 @@ Known Phase 2 hardening:
 Current API surface:
 
 - `GET /api/health`: public health endpoint for uptime monitoring.
-- `POST /api/auth/register`: public account registration endpoint with validation and rate limiting.
-- `POST /api/auth/login`: public account login endpoint with validation and rate limiting.
+- `POST /api/auth/email/request-code`: public OTP request endpoint with validation and rate limiting.
+- `POST /api/auth/email/verify-code`: public OTP verification endpoint with validation and rate limiting.
 - `GET /api/auth/session`: reads the current HttpOnly app session.
 - `DELETE /api/auth/session`: clears the current app session.
 
 The health endpoint performs no RPC calls, reads no PII, and always returns a fast JSON status when the app is running.
 
-Auth endpoints must never log request bodies because they contain passwords.
+Auth endpoints must never log request bodies because they contain email addresses and one-time codes.
 
 Future API endpoints should:
 

@@ -18,10 +18,14 @@ This project uses public browser-safe variables for wallet and RPC setup, and se
 ## Server-Only Variables
 
 - `TELEGRAM_BOT_TOKEN`: Telegram bot token. Never prefix this with `NEXT_PUBLIC_`.
-- `DATABASE_URL`: Postgres connection string used by the email/password auth API.
 - `AUTH_SECRET`: Long random secret used to sign the HttpOnly app session cookie.
+- `SMTP_HOST`: SMTP host used to send passwordless login codes.
+- `SMTP_PORT`: SMTP port, usually `465` for SSL or `587` for STARTTLS.
+- `SMTP_USER`: SMTP username or sender mailbox.
+- `SMTP_PASS`: SMTP password or provider app password.
+- `SMTP_FROM`: Sender label, for example `Cyclos <wallet@example.com>`.
 
-Next.js embeds every `NEXT_PUBLIC_` variable into browser bundles. Keep private keys, bot tokens, database URLs, signing secrets, and webhook secrets server-side only.
+Next.js embeds every `NEXT_PUBLIC_` variable into browser bundles. Keep private keys, bot tokens, SMTP credentials, signing secrets, and webhook secrets server-side only.
 
 ## Local Setup
 
@@ -39,8 +43,12 @@ NEXT_PUBLIC_WEB3AUTH_NETWORK=sapphire_devnet
 NEXT_PUBLIC_WEB3AUTH_REDIRECT_URL=http://localhost:3000
 NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
 TELEGRAM_BOT_TOKEN=TEST_BOT_TOKEN
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/cyclos
 AUTH_SECRET=replace-with-a-long-random-local-secret
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=your@gmail.com
+SMTP_PASS=google-app-password
+SMTP_FROM="Cyclos <your@gmail.com>"
 NEXT_PUBLIC_ENVIRONMENT=development
 ANALYZE=false
 ```
@@ -63,8 +71,12 @@ NEXT_PUBLIC_WEB3AUTH_REDIRECT_URL=https://your-vercel-domain.vercel.app
 NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=...
-DATABASE_URL=...
 AUTH_SECRET=...
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=...
+SMTP_PASS=...
+SMTP_FROM="Cyclos <...>"
 ```
 
 Mark server-side secrets as sensitive in Vercel, rotate keys regularly, and use different keys for development, preview, and production.

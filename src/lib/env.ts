@@ -52,16 +52,6 @@ export function getTelegramBotToken(): string {
 }
 
 /**
- * Server-only Postgres connection string.
- *
- * Keep this value outside NEXT_PUBLIC_* variables so it is never bundled into
- * client JavaScript.
- */
-export function getDatabaseUrl(): string {
-  return getEnv("DATABASE_URL");
-}
-
-/**
  * Server-only HMAC secret used to sign the app session cookie.
  */
 export function getAuthSecret(): string {
@@ -76,4 +66,24 @@ export function getAuthSecret(): string {
   }
 
   throw new Error("Missing environment variable: AUTH_SECRET");
+}
+
+export function getSmtpConfig() {
+  const host = process.env.SMTP_HOST;
+  const port = process.env.SMTP_PORT;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const from = process.env.SMTP_FROM;
+
+  if (!host || !port || !user || !pass || !from) {
+    throw new Error("Missing SMTP configuration");
+  }
+
+  return {
+    host,
+    port: Number(port),
+    user,
+    pass,
+    from,
+  };
 }

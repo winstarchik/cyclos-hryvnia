@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSecret } from "@/lib/env";
-import type { AuthUser } from "@/lib/server/users";
+import type { AuthUser } from "@/lib/server/authInput";
 
 export const SESSION_COOKIE_NAME = "cyclos_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
