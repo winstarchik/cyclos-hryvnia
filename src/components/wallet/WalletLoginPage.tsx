@@ -90,7 +90,6 @@ export function WalletLoginPage() {
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showEmailLogin, setShowEmailLogin] = useState(false);
   const [loadingAction, setLoadingAction] = useState<AuthAction | null>(null);
   const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
   const [showSlowConnection, setShowSlowConnection] = useState(false);
@@ -143,13 +142,6 @@ export function WalletLoginPage() {
   }
 
   async function handleEmailLogin() {
-    if (!showEmailLogin) {
-      clearError();
-      setLocalErrorKey(null);
-      setShowEmailLogin(true);
-      return;
-    }
-
     const trimmedEmail = email.trim();
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
     if (!isValidEmail) {
@@ -218,6 +210,7 @@ export function WalletLoginPage() {
 
       const authenticatedEmail = payload.data?.user?.email ?? trimmedEmail;
       setEmailPasswordSession(authenticatedEmail);
+      router.replace(`/${locale}/wallet`);
     });
   }
 
@@ -269,109 +262,90 @@ export function WalletLoginPage() {
             </div>
 
             <div aria-busy={isConnecting} aria-live="polite" className="mt-5 space-y-3">
+              <div className="space-y-3 rounded-2xl border border-dark-800 bg-dark-950/70 p-3">
+                <div>
+                  <label
+                    className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500"
+                    htmlFor={emailInputId}
+                  >
+                    {t("emailAddress")}
+                  </label>
+                  <input
+                    aria-describedby={visibleErrorMessage ? errorId : undefined}
+                    aria-invalid={localErrorKey === "emailRequired"}
+                    autoComplete="email"
+                    className="input-base min-h-12 w-full"
+                    disabled={isConnecting}
+                    id={emailInputId}
+                    inputMode="email"
+                    onChange={(event) => {
+                      setEmail(event.target.value);
+                      if (localErrorKey === "emailRequired") {
+                        setLocalErrorKey(null);
+                      }
+                    }}
+                    placeholder={t("emailPlaceholder")}
+                    type="email"
+                    value={email}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500"
+                    htmlFor={passwordInputId}
+                  >
+                    {t("password")}
+                  </label>
+                  <input
+                    aria-describedby={visibleErrorMessage ? errorId : undefined}
+                    aria-invalid={
+                      localErrorKey === "passwordRequired" ||
+                      localErrorKey === "passwordTooShort"
+                    }
+                    autoComplete={
+                      authMode === "login" ? "current-password" : "new-password"
+                    }
+                    className="input-base min-h-12 w-full"
+                    disabled={isConnecting}
+                    id={passwordInputId}
+                    onChange={(event) => {
+                      setPassword(event.target.value);
+                      if (
+                        localErrorKey === "passwordRequired" ||
+                        localErrorKey === "passwordTooShort" ||
+                        localErrorKey === "invalidCredentials"
+                      ) {
+                        setLocalErrorKey(null);
+                      }
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !isConnecting) {
+                        void handleEmailLogin();
+                      }
+                    }}
+                    placeholder={t("passwordPlaceholder")}
+                    type="password"
+                    value={password}
+                  />
+                </div>
+              </div>
+
               <Button
                 className="h-12 rounded-2xl text-sm shadow-lg shadow-accent-600/20 hover:scale-[1.02] disabled:hover:scale-100"
                 disabled={isConnecting}
                 fullWidth
-                isLoading={loadingAction === "google"}
-                loadingText={common("connecting")}
-                onClick={() => runAuthAction("google", connectGoogle)}
-                size="md"
-                type="button"
-              >
-                <ProviderMark>G</ProviderMark>
-                {t("continueWithGoogle")}
-              </Button>
-
-              <Button
-                className="h-12 rounded-2xl text-sm"
-                disabled={isConnecting}
-                fullWidth
                 isLoading={loadingAction === "email"}
-                loadingText={common("connecting")}
+                loadingText={common("processing")}
                 onClick={handleEmailLogin}
                 size="md"
                 type="button"
-                variant="secondary"
               >
                 <ProviderMark>@</ProviderMark>
-                {showEmailLogin
-                  ? authMode === "login"
-                    ? t("loginWithEmail")
-                    : t("createAccountWithEmail")
-                  : t("continueWithEmail")}
+                {authMode === "login"
+                  ? t("loginWithEmail")
+                  : t("createAccountWithEmail")}
               </Button>
-
-              {showEmailLogin ? (
-                <div className="space-y-3 rounded-2xl border border-dark-800 bg-dark-950/70 p-3">
-                  <div>
-                    <label
-                      className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500"
-                      htmlFor={emailInputId}
-                    >
-                      {t("emailAddress")}
-                    </label>
-                    <input
-                      aria-describedby={visibleErrorMessage ? errorId : undefined}
-                      aria-invalid={localErrorKey === "emailRequired"}
-                      autoComplete="email"
-                      className="input-base min-h-12 w-full"
-                      disabled={isConnecting}
-                      id={emailInputId}
-                      inputMode="email"
-                      onChange={(event) => {
-                        setEmail(event.target.value);
-                        if (localErrorKey === "emailRequired") {
-                          setLocalErrorKey(null);
-                        }
-                      }}
-                      placeholder={t("emailPlaceholder")}
-                      type="email"
-                      value={email}
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500"
-                      htmlFor={passwordInputId}
-                    >
-                      {t("password")}
-                    </label>
-                    <input
-                      aria-describedby={visibleErrorMessage ? errorId : undefined}
-                      aria-invalid={
-                        localErrorKey === "passwordRequired" ||
-                        localErrorKey === "passwordTooShort"
-                      }
-                      autoComplete={
-                        authMode === "login" ? "current-password" : "new-password"
-                      }
-                      className="input-base min-h-12 w-full"
-                      disabled={isConnecting}
-                      id={passwordInputId}
-                      onChange={(event) => {
-                        setPassword(event.target.value);
-                        if (
-                          localErrorKey === "passwordRequired" ||
-                          localErrorKey === "passwordTooShort" ||
-                          localErrorKey === "invalidCredentials"
-                        ) {
-                          setLocalErrorKey(null);
-                        }
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !isConnecting) {
-                          void handleEmailLogin();
-                        }
-                      }}
-                      placeholder={t("passwordPlaceholder")}
-                      type="password"
-                      value={password}
-                    />
-                  </div>
-                </div>
-              ) : null}
             </div>
 
             <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
@@ -379,6 +353,21 @@ export function WalletLoginPage() {
               <span>{common("or")}</span>
               <span className="h-px flex-1 bg-dark-800" />
             </div>
+
+            <Button
+              className="mb-3 h-12 rounded-2xl text-sm"
+              disabled={isConnecting}
+              fullWidth
+              isLoading={loadingAction === "google"}
+              loadingText={common("connecting")}
+              onClick={() => runAuthAction("google", connectGoogle)}
+              size="md"
+              type="button"
+              variant="secondary"
+            >
+              <ProviderMark>G</ProviderMark>
+              {t("continueWithGoogle")}
+            </Button>
 
             <Button
               className="h-12 rounded-2xl text-sm"

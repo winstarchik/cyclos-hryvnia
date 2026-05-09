@@ -32,6 +32,8 @@ const SOCIAL_AUTH_CONNECTIONS = {
   (typeof AUTH_CONNECTION)[keyof typeof AUTH_CONNECTION]
 >;
 
+const WEB3AUTH_CONNECT_TIMEOUT_MS = 30_000;
+
 export type UseWalletResult = Pick<
   WalletStore,
   | "address"
@@ -105,7 +107,6 @@ export function useWallet(): UseWalletResult {
 
   const {
     connect,
-    loading: web3AuthConnecting,
     error: web3AuthConnectError,
     connectorName: web3AuthConnectorName,
     connectTo,
@@ -187,11 +188,32 @@ export function useWallet(): UseWalletResult {
       setLoading(true);
       setError(null);
 
+      let timeoutId: number | null = null;
+
       try {
-        await action();
+        await Promise.race([
+          action(),
+          new Promise((_, reject) => {
+            timeoutId = window.setTimeout(() => {
+              reject(new Error("WEB3AUTH_CONNECT_TIMEOUT"));
+            }, WEB3AUTH_CONNECT_TIMEOUT_MS);
+          }),
+        ]);
       } catch (web3AuthError) {
-        setError(getWeb3AuthUserMessage(web3AuthError));
+        if (
+          web3AuthError instanceof Error &&
+          web3AuthError.message === "WEB3AUTH_CONNECT_TIMEOUT"
+        ) {
+          setError(
+            "Google sign-in is taking longer than expected. Please try again or use email registration.",
+          );
+        } else {
+          setError(getWeb3AuthUserMessage(web3AuthError));
+        }
       } finally {
+        if (timeoutId) {
+          window.clearTimeout(timeoutId);
+        }
         setLoading(false);
       }
     },
@@ -281,7 +303,7 @@ export function useWallet(): UseWalletResult {
     connected,
     provider,
     connectorName,
-    loading: loading || web3AuthConnecting || web3AuthDisconnecting,
+    loading: loading || web3AuthDisconnecting,
     error,
     connectWallet,
     connectSocial,
