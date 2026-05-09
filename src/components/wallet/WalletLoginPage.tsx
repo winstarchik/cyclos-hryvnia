@@ -5,6 +5,7 @@ import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { useWallet } from "@/hooks/useWallet";
 import { hasWeb3AuthClientId } from "@/lib/env";
 import { INJECTED_SOLANA_WALLET_NOT_FOUND } from "@/lib/injectedSolana";
@@ -326,6 +327,10 @@ export function WalletLoginPage() {
   return (
     <main className="relative flex min-h-screen overflow-hidden bg-dark-950 px-4 py-8 text-white sm:px-6">
       <div aria-hidden="true" className="animate-gradient-shift absolute inset-0" />
+
+      {!isWalletModalActive ? (
+        <LanguageSwitcher className="fixed right-4 top-4 z-20 sm:right-6 sm:top-6" />
+      ) : null}
 
       <div className="relative z-10 flex w-full flex-1 items-center justify-center pb-[max(env(safe-area-inset-bottom),2rem)] pt-[max(env(safe-area-inset-top),2rem)]">
         {!isWalletModalActive ? (
