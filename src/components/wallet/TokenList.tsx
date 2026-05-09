@@ -24,7 +24,7 @@ export function TokenList({ balances }: TokenListProps) {
     <div className="space-y-3">
       {balances.map((balance, index) => (
         <div
-          className="animate-fade-in-left flex min-w-0 items-center justify-between gap-3 rounded-2xl border border-dark-800 bg-dark-900/30 p-4 backdrop-blur-sm transition hover:bg-dark-900/50"
+          className="animate-fade-in-left cy-card flex min-w-0 items-center justify-between gap-3 p-4 transition hover:bg-[#162033]"
           key={balance.token.address}
           style={{ animationDelay: `${index * 50}ms` }}
         >
@@ -42,7 +42,7 @@ export function TokenList({ balances }: TokenListProps) {
             ) : (
               <div
                 aria-label={balance.token.symbol}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-dark-800 text-sm font-semibold text-accent-400"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-500/15 text-sm font-semibold text-accent-400"
               >
                 {balance.token.symbol.slice(0, 2)}
               </div>

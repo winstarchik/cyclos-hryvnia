@@ -33,35 +33,63 @@
     "receive": "Receive",
     "send": "Send",
     "assets": "Your Assets",
+    "activity": "Activity",
     "totalBalance": "Total Balance",
     "connectedAddress": "Connected: {address}",
+    "cuahReady": "cUAH ready",
+    "connectHint": "Connect wallet to view cUAH",
     "emptyAssets": "No assets yet. Connect a wallet or refresh after your first deposit.",
     "lastUpdated": "Updated {time}",
     "loadError": "We could not refresh balances. Please check your connection and try again."
   },
   "history": {
+    "eyebrow": "On-chain activity",
     "title": "Transaction History",
     "empty": "No transactions yet",
-    "loadError": "We could not load transaction history. Please try again."
+    "loadError": "We could not load transaction history. Please try again.",
+    "filters": {
+      "all": "All",
+      "send": "Sent",
+      "receive": "Received",
+      "swap": "Swaps"
+    },
+    "types": {
+      "send": "Sent",
+      "receive": "Received",
+      "swap": "Swap"
+    }
   },
   "receive": {
     "title": "Receive Crypto",
     "subtitle": "Share your address or QR code",
+    "network": "Solana network",
+    "connectFirst": "Connect a wallet to generate your receive QR code.",
     "walletAddress": "Wallet Address",
+    "shareAddress": "Share",
     "copyAddress": "Copy Address",
+    "onlySend": "Only send Solana assets to this address.",
     "copyError": "We could not copy the address. You can select it manually."
   },
   "send": {
     "title": "Send Crypto",
+    "subtitle": "Validate recipient, token, and amount before signing",
     "recipientAddress": "Recipient Address",
+    "recipientPlaceholder": "Enter wallet address",
     "selectToken": "Select Token",
     "amount": "Amount",
+    "balance": "Balance",
+    "max": "Max",
+    "memo": "Memo (optional)",
+    "memoPlaceholder": "Add a note",
+    "insufficientBalance": "Amount is higher than your available balance.",
+    "connectWalletFirst": "Connect a wallet before sending.",
     "button": "Send",
     "processing": "Processing...",
-    "readyMessage": "Ready. Transaction signing will be enabled in Phase 4.",
+    "readyMessage": "Transfer details are validated and ready for signing.",
     "comingSoon": "Send functionality coming in Phase 4!"
   },
   "nav": {
+    "label": "Main navigation",
     "wallet": "Wallet",
     "history": "History",
     "receive": "Receive",

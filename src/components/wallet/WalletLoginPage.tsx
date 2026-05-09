@@ -7,6 +7,31 @@ import { useWallet } from "@/hooks/useWallet";
 
 type LoadingProvider = "magic" | "phantom" | null;
 
+function CUAHCoin() {
+  return (
+    <div
+      aria-hidden="true"
+      className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[radial-gradient(circle_at_35%_35%,#6b8fff,#2441a8)] shadow-[0_0_40px_rgba(65,105,225,0.45),0_0_80px_rgba(65,105,225,0.18)]"
+    >
+      <span className="text-4xl font-bold text-white">₴</span>
+    </div>
+  );
+}
+
+function PhantomLogo() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 128 128">
+      <rect fill="#AB9FF2" height="128" rx="32" width="128" />
+      <path
+        d="M110.584 64.914H99.142C99.142 41.765 80.173 23 56.75 23 33.622 23 14.816 41.395 14.42 64.217 14.01 87.757 35.422 108 59.387 108h3.783c21.126 0 49.945-16.215 54.117-35.953.752-3.551-2.166-7.133-6.703-7.133Z"
+        fill="white"
+      />
+      <ellipse cx="79.002" cy="55.479" fill="#AB9FF2" rx="6.5" ry="9.5" />
+      <ellipse cx="54.002" cy="55.479" fill="#AB9FF2" rx="6.5" ry="9.5" />
+    </svg>
+  );
+}
+
 export function WalletLoginPage() {
   const t = useTranslations("onboarding");
   const common = useTranslations("common");
@@ -102,10 +127,11 @@ export function WalletLoginPage() {
       <div className="relative z-10 flex w-full flex-1 items-center justify-center pb-[max(env(safe-area-inset-bottom),2rem)] pt-[max(env(safe-area-inset-top),2rem)]">
         <section className="animate-fade-in-up w-full max-w-sm">
           <div className="mb-8 text-center">
-            <p className="gradient-text text-sm font-semibold uppercase tracking-[0.18em]">
+            <CUAHCoin />
+            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-accent-400">
               {t("eyebrow")}
             </p>
-            <h1 className="mt-4 text-4xl font-semibold leading-tight text-white">
+            <h1 className="mt-3 text-4xl font-bold leading-tight text-white">
               {t("title")}
             </h1>
             <p className="mt-3 text-base leading-7 text-gray-400">
@@ -113,7 +139,7 @@ export function WalletLoginPage() {
             </p>
           </div>
 
-          <div className="rounded-3xl border border-dark-800 bg-dark-900/50 p-5 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-6">
+          <div className="cy-card-soft p-5 sm:p-6">
             <form
               aria-busy={isConnecting}
               aria-live="polite"
@@ -137,7 +163,7 @@ export function WalletLoginPage() {
                   placeholder={t("emailPlaceholder")}
                   aria-invalid={Boolean(visibleErrorKey)}
                   aria-describedby={visibleErrorKey ? errorId : undefined}
-                  className="h-12 w-full rounded-2xl border border-dark-700 bg-dark-950 px-4 text-base text-white outline-none transition placeholder:text-gray-500 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/25"
+                  className="cy-input"
                   disabled={isConnecting}
                 />
               </div>
@@ -162,7 +188,7 @@ export function WalletLoginPage() {
             </div>
 
             <Button
-              className="h-12 rounded-2xl text-sm shadow-lg shadow-purple-900/25 hover:scale-[1.02] focus-visible:ring-purple-300/70 disabled:hover:scale-100"
+              className="h-12 rounded-2xl border border-[#AB9FF2]/25 bg-[#AB9FF2]/15 text-sm text-[#f0edff] shadow-lg shadow-purple-900/20 hover:bg-[#AB9FF2]/20 hover:scale-[1.02] focus-visible:ring-purple-300/70 disabled:hover:scale-100"
               onClick={handlePhantomConnect}
               disabled={isConnecting}
               fullWidth
@@ -170,8 +196,9 @@ export function WalletLoginPage() {
               loadingText={common("connecting")}
               size="md"
               type="button"
-              variant="phantom"
+              variant="secondary"
             >
+              <PhantomLogo />
               {t("connectPhantom")}
             </Button>
 
