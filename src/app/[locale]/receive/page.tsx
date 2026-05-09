@@ -13,7 +13,13 @@ const QRCode = dynamic<QRCodeCanvasProps>(
   () => import("qrcode.react").then((mod) => mod.QRCodeCanvas),
   {
     loading: () => (
-      <div className="mx-auto aspect-square w-full max-w-[256px] animate-pulse rounded-xl bg-dark-800" />
+      <div
+        aria-busy="true"
+        className="mx-auto aspect-square w-full max-w-[256px] animate-pulse rounded-xl bg-dark-800"
+        role="status"
+      >
+        <span className="sr-only">Loading QR code</span>
+      </div>
     ),
     ssr: false,
   },

@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
 import type { Balance } from "@/types";
@@ -18,6 +19,8 @@ export default function SendPage() {
     Balance["token"] | undefined
   >(balances[0]?.token);
   const [amount, setAmount] = useState("");
+  const [processing, setProcessing] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     if (balances.length === 0) {
@@ -34,15 +37,32 @@ export default function SendPage() {
     }
   }, [balances, selectedToken]);
 
-  const canSend =
-    connected && Boolean(recipient.trim()) && Boolean(amount) && selectedToken;
+  useEffect(() => {
+    setSuccess(false);
+  }, [recipient, selectedToken, amount]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  const canSend =
+    connected &&
+    Boolean(recipient.trim()) &&
+    Boolean(amount) &&
+    Boolean(selectedToken) &&
+    !processing;
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!canSend) return;
 
-    window.alert(t("send.comingSoon"));
+    setProcessing(true);
+    setSuccess(false);
+
+    try {
+      await new Promise((resolve) => window.setTimeout(resolve, 500));
+      setSuccess(true);
+      window.alert(t("send.comingSoon"));
+    } finally {
+      setProcessing(false);
+    }
   }
 
   return (
@@ -52,7 +72,12 @@ export default function SendPage() {
           {t("send.title")}
         </h1>
 
-        <form className="animate-fade-in-up space-y-6" onSubmit={handleSubmit}>
+        <form
+          aria-busy={processing}
+          aria-live="polite"
+          className="animate-fade-in-up space-y-6"
+          onSubmit={handleSubmit}
+        >
           <div>
             <label
               className="mb-2 block text-sm font-medium text-gray-300"
@@ -68,6 +93,7 @@ export default function SendPage() {
               onChange={(event) => setRecipient(event.target.value)}
               placeholder="Enter address or domain"
               spellCheck={false}
+              disabled={processing}
               type="text"
               value={recipient}
             />
@@ -82,7 +108,7 @@ export default function SendPage() {
             </label>
             <select
               className="min-h-12 w-full rounded-xl border border-dark-800 bg-dark-900 px-4 py-3 text-white transition focus:border-accent-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={balances.length === 0}
+              disabled={processing || balances.length === 0}
               id="token"
               onChange={(event) =>
                 setSelectedToken(
@@ -119,17 +145,34 @@ export default function SendPage() {
               onChange={(event) => setAmount(event.target.value)}
               placeholder="0.00"
               step="any"
+              disabled={processing}
               type="number"
               value={amount}
             />
           </div>
+
+          {success ? (
+            <p
+              className="rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm leading-6 text-green-100"
+              role="status"
+            >
+              {t("send.readyMessage")}
+            </p>
+          ) : null}
 
           <button
             className="mt-8 min-h-12 w-full rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 py-4 font-semibold text-white transition hover:from-accent-600 hover:to-accent-700 focus:outline-none focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!canSend}
             type="submit"
           >
-            {t("send.button")}
+            {processing ? (
+              <span className="inline-flex items-center justify-center gap-2">
+                <LoadingSpinner />
+                <span>{t("send.processing")}</span>
+              </span>
+            ) : (
+              t("send.button")
+            )}
           </button>
         </form>
       </div>

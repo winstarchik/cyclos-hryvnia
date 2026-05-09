@@ -8,6 +8,10 @@
     "cancel": "Cancel",
     "close": "Close",
     "retry": "Retry",
+    "connecting": "Connecting...",
+    "processing": "Processing...",
+    "refreshing": "Refreshing...",
+    "takingLonger": "This is taking longer than usual. Please keep this screen open.",
     "somethingWentWrong": "Something went wrong. Please try again."
   },
   "onboarding": {
@@ -53,6 +57,8 @@
     "selectToken": "Select Token",
     "amount": "Amount",
     "button": "Send",
+    "processing": "Processing...",
+    "readyMessage": "Ready. Transaction signing will be enabled in Phase 4.",
     "comingSoon": "Send functionality coming in Phase 4!"
   },
   "nav": {

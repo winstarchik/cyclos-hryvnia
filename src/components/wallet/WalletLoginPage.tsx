@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useId, useState } from "react";
 import { useTranslations } from "next-intl";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { useWallet } from "@/hooks/useWallet";
 
 type LoadingProvider = "magic" | "phantom" | null;
@@ -26,6 +27,7 @@ export function WalletLoginPage() {
   const [loadingProvider, setLoadingProvider] = useState<LoadingProvider>(null);
   const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
   const [lastAttempt, setLastAttempt] = useState<LoadingProvider>(null);
+  const [showSlowConnection, setShowSlowConnection] = useState(false);
 
   const isConnecting = loading || walletLoading;
   const visibleErrorKey =
@@ -41,6 +43,16 @@ export function WalletLoginPage() {
       setEmail("");
     }
   }, [connected, provider]);
+
+  useEffect(() => {
+    if (!isConnecting) {
+      setShowSlowConnection(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setShowSlowConnection(true), 10_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [isConnecting]);
 
   async function handleMagicLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -102,7 +114,12 @@ export function WalletLoginPage() {
           </div>
 
           <div className="rounded-3xl border border-dark-800 bg-dark-900/50 p-5 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-6">
-            <form className="space-y-4" onSubmit={handleMagicLogin}>
+            <form
+              aria-busy={isConnecting}
+              aria-live="polite"
+              className="space-y-4"
+              onSubmit={handleMagicLogin}
+            >
               <div className="space-y-2">
                 <label
                   className="block text-sm font-medium text-gray-300"
@@ -130,9 +147,14 @@ export function WalletLoginPage() {
                 className="flex h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 px-4 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 outline-none transition hover:scale-[1.02] active:scale-[0.98] focus:ring-2 focus:ring-accent-400/60 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100 disabled:active:scale-100"
                 disabled={isConnecting}
               >
-                {loadingProvider === "magic"
-                  ? common("loading")
-                  : t("continueButton")}
+                {loadingProvider === "magic" ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoadingSpinner />
+                    <span>{common("connecting")}</span>
+                  </span>
+                ) : (
+                  t("continueButton")
+                )}
               </button>
             </form>
 
@@ -148,10 +170,24 @@ export function WalletLoginPage() {
               onClick={handlePhantomConnect}
               disabled={isConnecting}
             >
-              {loadingProvider === "phantom"
-                ? common("loading")
-                : t("connectPhantom")}
+              {loadingProvider === "phantom" ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoadingSpinner />
+                  <span>{common("connecting")}</span>
+                </span>
+              ) : (
+                t("connectPhantom")
+              )}
             </button>
+
+            {showSlowConnection ? (
+              <p
+                className="mt-4 rounded-2xl border border-accent-500/25 bg-accent-500/10 px-4 py-3 text-sm leading-6 text-accent-100"
+                role="status"
+              >
+                {common("takingLonger")}
+              </p>
+            ) : null}
 
             {visibleErrorKey ? (
               <p

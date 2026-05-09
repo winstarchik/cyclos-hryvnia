@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 
 interface BalanceCardProps {
   address: string | null;
+  loading?: boolean;
   totalValueUSD: number;
 }
 
@@ -20,11 +21,38 @@ function formatAddress(address: string | null): string {
   return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
-export function BalanceCard({ address, totalValueUSD }: BalanceCardProps) {
+function BalanceCardSkeleton() {
+  return (
+    <div
+      aria-busy="true"
+      aria-live="polite"
+      className="mt-6 w-full rounded-3xl border border-dark-800 bg-dark-950/70 p-5 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-8"
+      role="status"
+    >
+      <div className="h-4 w-28 animate-pulse rounded-full bg-dark-800" />
+      <div className="mt-4 h-10 w-48 animate-pulse rounded-full bg-dark-800 sm:h-12" />
+      <div className="mt-4 h-4 w-36 animate-pulse rounded-full bg-dark-800/80" />
+      <span className="sr-only">Loading balance</span>
+    </div>
+  );
+}
+
+export function BalanceCard({
+  address,
+  loading = false,
+  totalValueUSD,
+}: BalanceCardProps) {
   const t = useTranslations("wallet");
 
+  if (loading) {
+    return <BalanceCardSkeleton />;
+  }
+
   return (
-    <div className="mt-6 w-full rounded-3xl border border-dark-800 bg-dark-950/70 p-5 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-8">
+    <div
+      aria-busy={false}
+      className="mt-6 w-full rounded-3xl border border-dark-800 bg-dark-950/70 p-5 shadow-2xl shadow-black/30 backdrop-blur-md sm:p-8"
+    >
       <p className="text-sm font-medium text-gray-400">{t("totalBalance")}</p>
       <p className="mt-2 break-words text-4xl font-semibold tracking-normal text-white sm:text-5xl">
         {formatCurrency(totalValueUSD)}

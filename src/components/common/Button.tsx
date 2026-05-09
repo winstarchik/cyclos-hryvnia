@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { tv } from "tailwind-variants";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 const buttonVariants = tv({
   base: "font-semibold rounded-xl transition focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
@@ -38,6 +39,7 @@ export interface ButtonProps
   size?: "sm" | "md" | "lg" | "xl";
   fullWidth?: boolean;
   isLoading?: boolean;
+  loadingText?: string;
 }
 
 /**
@@ -56,6 +58,7 @@ export function Button({
   size,
   fullWidth,
   isLoading,
+  loadingText = "Loading...",
   disabled,
   className,
   ...props
@@ -64,9 +67,17 @@ export function Button({
     <button
       className={buttonVariants({ variant, size, fullWidth, className })}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       {...props}
     >
-      {isLoading ? "..." : children}
+      {isLoading ? (
+        <span className="inline-flex items-center justify-center gap-2">
+          <LoadingSpinner />
+          <span>{loadingText}</span>
+        </span>
+      ) : (
+        children
+      )}
     </button>
   );
 }

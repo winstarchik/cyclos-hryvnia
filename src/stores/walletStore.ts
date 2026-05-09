@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { handleError, isNetworkError, logDevError } from "@/lib/errors";
+import {
+  handleError,
+  isNetworkError,
+  logDevError,
+  withTimeout,
+} from "@/lib/errors";
 
 /**
  * Wallet provider options supported by the app.
@@ -80,6 +85,7 @@ const storage =
   typeof window === "undefined"
     ? undefined
     : createJSONStorage(() => window.localStorage);
+const WALLET_CONNECT_TIMEOUT_MS = 30_000;
 
 function getWalletErrorMessage(
   provider: Exclude<WalletProvider, null>,
@@ -90,6 +96,10 @@ function getWalletErrorMessage(
 
   if (/reject|denied|declined|cancel/i.test(message)) {
     return "Connection was cancelled. You can try again when you are ready.";
+  }
+
+  if (/PHANTOM_NOT_INSTALLED/i.test(message)) {
+    return "Phantom is not installed. Please install Phantom and try again.";
   }
 
   if (isNetworkError(error) || appError.code === "TIMEOUT") {
@@ -111,17 +121,23 @@ export const useWalletStore = create<WalletStore>()(
       connectMagic: async (email) => {
         set({ loading: true, error: null });
         try {
-          // Wallet SDKs are loaded on demand to keep the initial app shell lean.
-          const magic = await import("@/lib/magic");
+          const address = await withTimeout(
+            (async () => {
+              // Wallet SDKs are loaded on demand to keep the initial app shell lean.
+              const magic = await import("@/lib/magic");
 
-          // Ensure only one provider is active at a time.
-          if (get().provider === "phantom") {
-            const { disconnectPhantom } = await import("@/lib/phantom");
-            await disconnectPhantom();
-          }
+              // Ensure only one provider is active at a time.
+              if (get().provider === "phantom") {
+                const { disconnectPhantom } = await import("@/lib/phantom");
+                await disconnectPhantom();
+              }
 
-          await magic.loginWithMagic(email);
-          const address = await magic.getMagicWallet();
+              await magic.loginWithMagic(email);
+              return magic.getMagicWallet();
+            })(),
+            WALLET_CONNECT_TIMEOUT_MS,
+            "Magic wallet connection",
+          );
 
           set({
             address,
@@ -145,25 +161,27 @@ export const useWalletStore = create<WalletStore>()(
         set({ loading: true, error: null });
 
         try {
-          // Phantom helpers are only needed once the user actively connects.
-          const phantom = await import("@/lib/phantom");
+          const address = await withTimeout(
+            (async () => {
+              // Phantom helpers are only needed once the user actively connects.
+              const phantom = await import("@/lib/phantom");
 
-          if (!phantom.isPhantomInstalled()) {
-            set({
-              loading: false,
-              error:
-                "Phantom is not installed. Please install Phantom and try again.",
-            });
-            return;
-          }
+              if (!phantom.isPhantomInstalled()) {
+                throw new Error("PHANTOM_NOT_INSTALLED");
+              }
 
-          // Ensure only one provider is active at a time.
-          if (get().provider === "magic") {
-            const { logout: magicLogout } = await import("@/lib/magic");
-            await magicLogout();
-          }
+              // Ensure only one provider is active at a time.
+              if (get().provider === "magic") {
+                const { logout: magicLogout } = await import("@/lib/magic");
+                await magicLogout();
+              }
 
-          const address = await phantom.connectPhantom();
+              return phantom.connectPhantom();
+            })(),
+            WALLET_CONNECT_TIMEOUT_MS,
+            "Phantom wallet connection",
+          );
+
           set({
             address,
             connected: true,

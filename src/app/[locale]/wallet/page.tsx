@@ -2,6 +2,7 @@
 
 import { lazy, Suspense } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { BalanceCard } from "@/components/wallet/BalanceCard";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
@@ -45,6 +46,7 @@ export default function WalletPage() {
     lastUpdated,
     refetch,
   } = useBalance();
+  const isInitialBalanceLoad = loading && balances.length === 0;
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-dark-950 pb-[calc(5rem+env(safe-area-inset-bottom))] text-white">
@@ -54,7 +56,11 @@ export default function WalletPage() {
             {t("title")}
           </h1>
 
-          <BalanceCard address={address} totalValueUSD={totalValueUSD} />
+          <BalanceCard
+            address={address}
+            loading={isInitialBalanceLoad}
+            totalValueUSD={totalValueUSD}
+          />
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <a
@@ -74,6 +80,7 @@ export default function WalletPage() {
       </header>
 
       <section
+        aria-busy={loading}
         className="animate-fade-in mx-auto w-full max-w-2xl px-6 pt-6"
         style={{ animationDelay: "100ms" }}
       >
@@ -91,7 +98,17 @@ export default function WalletPage() {
           ) : null}
         </div>
 
-        {loading ? <TokenListSkeleton /> : null}
+        {isInitialBalanceLoad ? <TokenListSkeleton /> : null}
+
+        {loading && balances.length > 0 ? (
+          <p
+            className="mb-4 inline-flex items-center gap-2 text-xs text-gray-500"
+            role="status"
+          >
+            <LoadingSpinner className="h-3 w-3" />
+            <span>{common("refreshing")}</span>
+          </p>
+        ) : null}
 
         {error ? (
           <div
