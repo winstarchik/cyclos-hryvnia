@@ -214,6 +214,14 @@ export default function WalletPage() {
                       ? t("cuahReady")
                       : t("connectHint")}
                 </p>
+                {!address ? (
+                  <Link
+                    className="mt-3 inline-flex min-h-10 items-center justify-center rounded-xl bg-accent-500 px-4 text-sm font-semibold text-white transition hover:bg-accent-600"
+                    href={`/${locale}`}
+                  >
+                    {t("connectWalletAction")}
+                  </Link>
+                ) : null}
               </div>
               <CUAHIcon />
             </div>

@@ -7,7 +7,9 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import type * as QRCodeReact from "qrcode.react";
 import { Button } from "@/components/common/Button";
+import { TOKENS } from "@/constants/tokens";
 import { useWallet } from "@/hooks/useWallet";
+import type { Token } from "@/types";
 
 type QRCodeCanvasProps = ComponentProps<typeof QRCodeReact.QRCodeCanvas>;
 
@@ -27,6 +29,13 @@ const QRCode = dynamic<QRCodeCanvasProps>(
   },
 );
 
+const RECEIVE_TOKENS: Token[] = [
+  TOKENS.cUAH,
+  TOKENS.SOL,
+  TOKENS.USDC,
+  TOKENS.WBTC,
+].map((token) => ({ ...token }));
+
 function BackIcon() {
   return (
     <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
@@ -41,20 +50,20 @@ function BackIcon() {
   );
 }
 
-function CUAHIcon() {
+function TokenIcon({ symbol }: { symbol: string }) {
   return (
     <svg aria-hidden="true" className="h-7 w-7" fill="none" viewBox="0 0 28 28">
       <circle cx="14" cy="14" fill="#4169e1" r="14" />
       <text
         dominantBaseline="middle"
         fill="white"
-        fontSize="14"
+        fontSize={symbol.length > 3 ? "9" : "12"}
         fontWeight="700"
         textAnchor="middle"
         x="50%"
         y="55%"
       >
-        ₴
+        {symbol === "cUAH" ? "₴" : symbol.slice(0, 3)}
       </text>
     </svg>
   );
@@ -64,6 +73,7 @@ export default function ReceivePage() {
   const t = useTranslations();
   const locale = useLocale();
   const { address } = useWallet();
+  const [selectedToken, setSelectedToken] = useState<Token>(TOKENS.cUAH);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
 
@@ -127,11 +137,45 @@ export default function ReceivePage() {
         </header>
 
         <section className="animate-scale-in flex flex-1 flex-col items-center justify-center pb-8 text-center">
-          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3">
-            <CUAHIcon />
-            <div className="text-left">
-              <p className="text-sm font-semibold text-white">cUAH</p>
-              <p className="text-xs text-gray-500">{t("receive.network")}</p>
+          <div className="mb-5 w-full rounded-2xl border border-white/[0.08] bg-white/[0.04] p-3">
+            <label className="sr-only" htmlFor="receive-token">
+              {t("send.selectToken")}
+            </label>
+            <div className="flex items-center gap-3">
+              <TokenIcon symbol={selectedToken.symbol} />
+              <div className="min-w-0 flex-1 text-left">
+                <select
+                  className="w-full appearance-none bg-transparent text-sm font-semibold text-white outline-none"
+                  id="receive-token"
+                  onInput={(event) => {
+                    const nextToken =
+                      RECEIVE_TOKENS.find(
+                        (token) => token.symbol === event.currentTarget.value,
+                      ) ?? RECEIVE_TOKENS[0];
+                    setSelectedToken(nextToken);
+                  }}
+                  onChange={(event) => {
+                    const nextToken =
+                      RECEIVE_TOKENS.find(
+                        (token) => token.symbol === event.target.value,
+                      ) ?? RECEIVE_TOKENS[0];
+                    setSelectedToken(nextToken);
+                  }}
+                  value={selectedToken.symbol}
+                >
+                  {RECEIVE_TOKENS.map((token) => (
+                    <option key={token.symbol} value={token.symbol}>
+                      {token.symbol}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  {selectedToken.name}
+                </p>
+              </div>
+              <span className="text-gray-400" aria-hidden="true">
+                ˅
+              </span>
             </div>
           </div>
 
@@ -188,8 +232,17 @@ export default function ReceivePage() {
           </div>
 
           <p className="mt-5 text-xs leading-5 text-gray-500">
-            {t("receive.onlySend")}
+            {t("receive.onlySendToken", { symbol: selectedToken.symbol })}
           </p>
+
+          {!address ? (
+            <Link
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl bg-accent-500 px-4 text-sm font-semibold text-white transition hover:bg-accent-600"
+              href={`/${locale}`}
+            >
+              {t("send.connectWalletAction")}
+            </Link>
+          ) : null}
 
           {copyError ? (
             <p

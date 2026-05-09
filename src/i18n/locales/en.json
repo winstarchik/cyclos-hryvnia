@@ -38,6 +38,7 @@
     "connectedAddress": "Connected: {address}",
     "cuahReady": "cUAH ready",
     "connectHint": "Connect wallet to view cUAH",
+    "connectWalletAction": "Connect wallet",
     "emptyAssets": "No assets yet. Connect a wallet or refresh after your first deposit.",
     "lastUpdated": "Updated {time}",
     "loadError": "We could not refresh balances. Please check your connection and try again."
@@ -68,6 +69,7 @@
     "shareAddress": "Share",
     "copyAddress": "Copy Address",
     "onlySend": "Only send Solana assets to this address.",
+    "onlySendToken": "Only send {symbol} on Solana to this address.",
     "copyError": "We could not copy the address. You can select it manually."
   },
   "send": {
@@ -77,12 +79,16 @@
     "recipientPlaceholder": "Enter wallet address",
     "selectToken": "Select Token",
     "amount": "Amount",
+    "amountUsd": "Amount in USD",
     "balance": "Balance",
     "max": "Max",
     "memo": "Memo (optional)",
     "memoPlaceholder": "Add a note",
     "insufficientBalance": "Amount is higher than your available balance.",
     "connectWalletFirst": "Connect a wallet before sending.",
+    "connectWalletAction": "Connect wallet",
+    "priceHint": "1 {symbol} ≈ {price}",
+    "priceUnavailable": "Price is unavailable for this token.",
     "button": "Send",
     "processing": "Processing...",
     "readyMessage": "Transfer details are validated and ready for signing.",

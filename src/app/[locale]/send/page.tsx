@@ -5,9 +5,27 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { TOKENS } from "@/constants/tokens";
 import { useBalance } from "@/hooks/useBalance";
 import { useWallet } from "@/hooks/useWallet";
-import type { Balance } from "@/types";
+import type { Balance, Token } from "@/types";
+
+const TOKEN_PRICE_USD: Record<string, number> = {
+  cUAH: 0.024,
+  SOL: 150,
+  USDC: 1,
+  WBTC: 65_000,
+};
+
+const SUPPORTED_SEND_TOKENS: Token[] = [
+  TOKENS.cUAH,
+  TOKENS.SOL,
+  TOKENS.USDC,
+  TOKENS.WBTC,
+].map((token) => ({
+  ...token,
+  price: TOKEN_PRICE_USD[token.symbol] ?? token.price,
+}));
 
 function BackIcon() {
   return (
@@ -50,6 +68,16 @@ function normalizeAmount(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function formatNumberInput(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "";
+  return Number(value.toFixed(6)).toString();
+}
+
+function getTokenPriceUSD(token?: Token): number {
+  if (!token) return 0;
+  return token.price ?? TOKEN_PRICE_USD[token.symbol] ?? 0;
+}
+
 export default function SendPage() {
   const t = useTranslations("send");
   const common = useTranslations("common");
@@ -57,50 +85,85 @@ export default function SendPage() {
   const { connected } = useWallet();
   const { balances, loading } = useBalance();
   const [recipient, setRecipient] = useState("");
-  const [selectedToken, setSelectedToken] = useState<
-    Balance["token"] | undefined
-  >(balances[0]?.token);
+  const [selectedToken, setSelectedToken] = useState<Token>(TOKENS.cUAH);
   const [amount, setAmount] = useState("");
+  const [usdAmount, setUsdAmount] = useState("");
   const [memo, setMemo] = useState("");
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (balances.length === 0) {
-      setSelectedToken(undefined);
-      return;
-    }
+    const selectedBalanceToken = balances.find(
+      (balance) => balance.token.symbol === selectedToken.symbol,
+    )?.token;
 
-    const selectedTokenExists = balances.some(
-      (balance) => balance.token.symbol === selectedToken?.symbol,
-    );
-
-    if (!selectedTokenExists) {
-      setSelectedToken(balances[0].token);
+    if (selectedBalanceToken) {
+      setSelectedToken((currentToken) => ({
+        ...currentToken,
+        ...selectedBalanceToken,
+        price: selectedBalanceToken.price ?? getTokenPriceUSD(currentToken),
+      }));
     }
-  }, [balances, selectedToken]);
+  }, [balances, selectedToken.symbol]);
 
   useEffect(() => {
     setSuccess(false);
-  }, [recipient, selectedToken, amount, memo]);
+  }, [recipient, selectedToken, amount, usdAmount, memo]);
 
   const selectedBalance = useMemo(
     () =>
       balances.find(
-        (balance) => balance.token.symbol === selectedToken?.symbol,
+        (balance) => balance.token.symbol === selectedToken.symbol,
       ),
     [balances, selectedToken],
   );
+  const tokenPriceUSD = getTokenPriceUSD(selectedToken);
   const numericAmount = normalizeAmount(amount);
+  const numericUSD = normalizeAmount(usdAmount);
   const hasEnoughBalance =
     selectedBalance !== undefined && numericAmount <= selectedBalance.amount;
   const canSend =
     connected &&
     Boolean(recipient.trim()) &&
     numericAmount > 0 &&
-    Boolean(selectedToken) &&
     hasEnoughBalance &&
     !processing;
+
+  function handleTokenChange(symbol: string) {
+    const nextToken =
+      SUPPORTED_SEND_TOKENS.find((token) => token.symbol === symbol) ??
+      SUPPORTED_SEND_TOKENS[0];
+    const nextPrice = getTokenPriceUSD(nextToken);
+
+    setSelectedToken(nextToken);
+    if (numericUSD > 0 && nextPrice > 0) {
+      setAmount(formatNumberInput(numericUSD / nextPrice));
+    } else if (numericAmount > 0 && nextPrice > 0) {
+      setUsdAmount(formatNumberInput(numericAmount * nextPrice));
+    }
+  }
+
+  function handleTokenAmountChange(value: string) {
+    setAmount(value);
+    const parsedAmount = normalizeAmount(value);
+
+    if (parsedAmount > 0 && tokenPriceUSD > 0) {
+      setUsdAmount(formatNumberInput(parsedAmount * tokenPriceUSD));
+    } else {
+      setUsdAmount("");
+    }
+  }
+
+  function handleUsdAmountChange(value: string) {
+    setUsdAmount(value);
+    const parsedUSD = normalizeAmount(value);
+
+    if (parsedUSD > 0 && tokenPriceUSD > 0) {
+      setAmount(formatNumberInput(parsedUSD / tokenPriceUSD));
+    } else {
+      setAmount("");
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,8 +183,18 @@ export default function SendPage() {
 
   function setMaxAmount() {
     if (selectedBalance) {
-      setAmount(String(selectedBalance.amount));
+      const maxAmount = String(selectedBalance.amount);
+      setAmount(maxAmount);
+      if (tokenPriceUSD > 0) {
+        setUsdAmount(formatNumberInput(selectedBalance.amount * tokenPriceUSD));
+      }
     }
+  }
+
+  function getTokenBalance(symbol: string): Balance | undefined {
+    return balances.find(
+      (balance) => balance.token.symbol.toLowerCase() === symbol.toLowerCase(),
+    );
   }
 
   return (
@@ -156,27 +229,23 @@ export default function SendPage() {
             </label>
             <select
               className="cy-input h-[52px]"
-              disabled={processing || balances.length === 0}
+              disabled={processing}
               id="token"
-              onChange={(event) =>
-                setSelectedToken(
-                  balances.find(
-                    (balance) => balance.token.symbol === event.target.value,
-                  )?.token,
-                )
-              }
-              value={selectedToken?.symbol || ""}
+              onInput={(event) => handleTokenChange(event.currentTarget.value)}
+              onChange={(event) => handleTokenChange(event.target.value)}
+              value={selectedToken.symbol}
             >
-              {balances.length === 0 ? (
-                <option value="">
-                  {loading ? common("loading") : t("selectToken")}
+              {SUPPORTED_SEND_TOKENS.map((token) => {
+                const tokenBalance = getTokenBalance(token.symbol);
+                return (
+                <option key={token.symbol} value={token.symbol}>
+                  {token.symbol}
+                  {tokenBalance
+                    ? ` (${formatBalance(tokenBalance.amount, locale)})`
+                    : ""}
                 </option>
-              ) : null}
-              {balances.map((balance) => (
-                <option key={balance.token.symbol} value={balance.token.symbol}>
-                  {balance.token.symbol} ({formatBalance(balance.amount, locale)})
-                </option>
-              ))}
+                );
+              })}
             </select>
             {loading ? (
               <p className="mt-3 inline-flex items-center gap-2 text-xs text-gray-500">
@@ -226,14 +295,14 @@ export default function SendPage() {
                   disabled={processing}
                   id="amount"
                   inputMode="decimal"
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) => handleTokenAmountChange(event.target.value)}
                   pattern="[0-9]*[.,]?[0-9]*"
                   placeholder="0.00"
                   type="text"
                   value={amount}
                 />
                 <span className="shrink-0 text-sm font-semibold text-gray-500">
-                  {selectedToken?.symbol ?? "cUAH"}
+                  {selectedToken.symbol}
                 </span>
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">
@@ -265,6 +334,43 @@ export default function SendPage() {
           <div className="cy-card p-4">
             <label
               className="mb-2 block text-sm font-semibold text-gray-300"
+              htmlFor="usdAmount"
+            >
+              {t("amountUsd")}
+            </label>
+            <div className="rounded-2xl border border-white/[0.08] bg-dark-900 px-4 py-3 focus-within:border-accent-500 focus-within:ring-2 focus-within:ring-accent-500/20">
+              <div className="flex items-center justify-between gap-3">
+                <input
+                  className="min-w-0 flex-1 bg-transparent text-2xl font-semibold text-white outline-none placeholder:text-gray-600"
+                  disabled={processing || tokenPriceUSD === 0}
+                  id="usdAmount"
+                  inputMode="decimal"
+                  onChange={(event) => handleUsdAmountChange(event.target.value)}
+                  pattern="[0-9]*[.,]?[0-9]*"
+                  placeholder="0.00"
+                  type="text"
+                  value={usdAmount}
+                />
+                <span className="shrink-0 text-sm font-semibold text-gray-500">
+                  USD
+                </span>
+              </div>
+              <p className="mt-3 text-xs text-gray-500">
+                {tokenPriceUSD > 0
+                  ? t("priceHint", {
+                      price: `$${tokenPriceUSD.toLocaleString("en-US", {
+                        maximumFractionDigits: 4,
+                      })}`,
+                      symbol: selectedToken.symbol,
+                    })
+                  : t("priceUnavailable")}
+              </p>
+            </div>
+          </div>
+
+          <div className="cy-card p-4">
+            <label
+              className="mb-2 block text-sm font-semibold text-gray-300"
               htmlFor="memo"
             >
               {t("memo")}
@@ -281,9 +387,15 @@ export default function SendPage() {
           </div>
 
           {!connected ? (
-            <p className="rounded-2xl border border-accent-500/25 bg-accent-500/10 px-4 py-3 text-sm leading-6 text-accent-100">
-              {t("connectWalletFirst")}
-            </p>
+            <div className="rounded-2xl border border-accent-500/25 bg-accent-500/10 p-4 text-sm leading-6 text-accent-100">
+              <p>{t("connectWalletFirst")}</p>
+              <Link
+                className="mt-3 inline-flex min-h-11 items-center justify-center rounded-xl bg-accent-500 px-4 text-sm font-semibold text-white transition hover:bg-accent-600"
+                href={`/${locale}`}
+              >
+                {t("connectWalletAction")}
+              </Link>
+            </div>
           ) : null}
 
           {success ? (
