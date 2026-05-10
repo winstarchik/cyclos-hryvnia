@@ -237,19 +237,17 @@ export function useWallet(): UseWalletResult {
       let timeoutId: number | null = null;
 
       try {
-        const provider = options.timeoutMs
-          ? await Promise.race([
-              action(),
-              new Promise((_, reject) => {
-                timeoutId = window.setTimeout(() => {
-                  reject(new Error("WEB3AUTH_CONNECT_TIMEOUT"));
-                }, options.timeoutMs ?? WEB3AUTH_CONNECT_TIMEOUT_MS);
-              }),
-            ])
-          : await action();
-
-        if (!provider) {
-          throw new Error("WEB3AUTH_NO_PROVIDER");
+        if (options.timeoutMs) {
+          await Promise.race([
+            action(),
+            new Promise((_, reject) => {
+              timeoutId = window.setTimeout(() => {
+                reject(new Error("WEB3AUTH_CONNECT_TIMEOUT"));
+              }, options.timeoutMs ?? WEB3AUTH_CONNECT_TIMEOUT_MS);
+            }),
+          ]);
+        } else {
+          await action();
         }
       } catch (web3AuthError) {
         if (
