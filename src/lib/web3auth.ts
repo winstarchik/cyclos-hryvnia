@@ -12,8 +12,11 @@ import {
 import type { Web3AuthContextConfig } from "@web3auth/modal/react";
 import {
   SOLANA_RPC,
-  WEB3AUTH_AUTH_CONNECTION_ID,
   WEB3AUTH_CLIENT_ID,
+  WEB3AUTH_EMAIL_AUTH_CONNECTION_ID,
+  WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID,
+  WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID,
+  WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID,
   WEB3AUTH_NETWORK as WEB3AUTH_NETWORK_ENV,
 } from "@/lib/env";
 
@@ -56,13 +59,29 @@ function getRedirectUrl() {
   if (typeof window !== "undefined") {
     const [locale] = window.location.pathname.split("/").filter(Boolean);
     const callbackLocale = SUPPORTED_LOCALES.has(locale) ? locale : "ua";
+    const { hostname, origin, port, protocol } = window.location;
+    const callbackOrigin =
+      hostname === "127.0.0.1" || hostname === "::1"
+        ? `${protocol}//localhost${port ? `:${port}` : ""}`
+        : origin;
 
     // Return to the localized entry page so Web3Auth can process the redirect
-    // before any locale middleware redirect can strip callback state.
-    return `${window.location.origin}/${callbackLocale}`;
+    // before any locale middleware redirect can strip callback state. Normalize
+    // 127.0.0.1 to localhost because Web3Auth domain whitelists are exact.
+    return `${callbackOrigin}/${callbackLocale}`;
   }
 
   return DEFAULT_REDIRECT_URL;
+}
+
+function getAuthConnectionIds(
+  authConnectionId: string,
+  groupedAuthConnectionId: string,
+) {
+  return {
+    ...(authConnectionId ? { authConnectionId } : {}),
+    ...(groupedAuthConnectionId ? { groupedAuthConnectionId } : {}),
+  };
 }
 
 const socialLoginMethods: LoginMethodConfig = {
@@ -72,9 +91,10 @@ const socialLoginMethods: LoginMethodConfig = {
     mainOption: true,
     showOnModal: true,
     authConnection: AUTH_CONNECTION.EMAIL_PASSWORDLESS,
-    ...(WEB3AUTH_AUTH_CONNECTION_ID
-      ? { authConnectionId: WEB3AUTH_AUTH_CONNECTION_ID }
-      : {}),
+    ...getAuthConnectionIds(
+      WEB3AUTH_EMAIL_AUTH_CONNECTION_ID,
+      WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID,
+    ),
   },
   [AUTH_CONNECTION.GOOGLE]: {
     name: "Google",
@@ -82,9 +102,10 @@ const socialLoginMethods: LoginMethodConfig = {
     mainOption: true,
     showOnModal: true,
     authConnection: AUTH_CONNECTION.GOOGLE,
-    ...(WEB3AUTH_AUTH_CONNECTION_ID
-      ? { authConnectionId: WEB3AUTH_AUTH_CONNECTION_ID }
-      : {}),
+    ...getAuthConnectionIds(
+      WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID,
+      WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID,
+    ),
   },
 };
 

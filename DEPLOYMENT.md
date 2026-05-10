@@ -32,6 +32,10 @@ NEXT_PUBLIC_SOLANA_RPC=https://api.mainnet-beta.solana.com
 NEXT_PUBLIC_WEB3AUTH_CLIENT_ID=YOUR_WEB3AUTH_CLIENT_ID
 NEXT_PUBLIC_WEB3AUTH_NETWORK=sapphire_mainnet
 NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-secret
@@ -45,7 +49,7 @@ SMTP_FROM="Cyclos <your@gmail.com>"
 
 Notes:
 
-- `NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID` is optional and only needed for a custom Web3Auth Google auth connection.
+- `NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID` is a legacy fallback. For direct Google/Email buttons, prefer the provider-specific Web3Auth Auth Connection IDs from Dashboard -> Auth Connections.
 - `TELEGRAM_BOT_TOKEN` is server-only. Never expose it with the `NEXT_PUBLIC_` prefix.
 - `DATABASE_URL`, `AUTH_SECRET`, and `SMTP_*` are server-only. They power email/password auth, verification codes, and password recovery.
 - Gmail requires an app password for SMTP; do not use the normal mailbox password.
@@ -173,6 +177,10 @@ NEXT_PUBLIC_SOLANA_RPC=https://api.mainnet-beta.solana.com
 NEXT_PUBLIC_WEB3AUTH_CLIENT_ID=YOUR_WEB3AUTH_CLIENT_ID
 NEXT_PUBLIC_WEB3AUTH_NETWORK=sapphire_mainnet
 NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-secret
@@ -332,6 +340,7 @@ pm2 restart cyclos-hryvnia
 - Check `NEXT_PUBLIC_WEB3AUTH_CLIENT_ID`.
 - Check `NEXT_PUBLIC_WEB3AUTH_NETWORK`.
 - Add the deployed domain to Web3Auth Domains.
+- If direct Google/Email buttons fail, add `NEXT_PUBLIC_WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID` and `NEXT_PUBLIC_WEB3AUTH_EMAIL_AUTH_CONNECTION_ID` from Auth Connections.
 - Confirm the project is set to the same network as the env value.
 
 ### Telegram opens a blank screen

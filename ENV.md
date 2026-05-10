@@ -13,7 +13,11 @@ This project uses public browser-safe variables for wallet and RPC setup, and se
 
 - `ANALYZE`: Set to `true` only when running a local bundle analysis build.
 - `NEXT_PUBLIC_WEB3AUTH_REDIRECT_URL`: Explicit redirect URL for Web3Auth social login. If omitted, the app uses the current browser origin. Add this exact URL to the Web3Auth dashboard whitelist.
-- `NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID`: Only needed when Google login uses a custom Web3Auth auth connection/verifier.
+- `NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID`: Legacy fallback auth connection id. Prefer the provider-specific values below.
+- `NEXT_PUBLIC_WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID`: Google auth connection id from Web3Auth Dashboard -> Auth Connections.
+- `NEXT_PUBLIC_WEB3AUTH_EMAIL_AUTH_CONNECTION_ID`: Email Passwordless auth connection id from Web3Auth Dashboard -> Auth Connections.
+- `NEXT_PUBLIC_WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID`: Optional grouped connection id if Web3Auth shows one for Google.
+- `NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID`: Optional grouped connection id if Web3Auth shows one for Email Passwordless.
 
 ## Server-Only Variables
 
@@ -43,6 +47,10 @@ NEXT_PUBLIC_WEB3AUTH_CLIENT_ID=YOUR_WEB3AUTH_CLIENT_ID_HERE
 NEXT_PUBLIC_WEB3AUTH_NETWORK=sapphire_devnet
 NEXT_PUBLIC_WEB3AUTH_REDIRECT_URL=http://localhost:3000
 NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 TELEGRAM_BOT_TOKEN=TEST_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-local-secret
 # Optional locally, required in production
@@ -72,6 +80,10 @@ NEXT_PUBLIC_WEB3AUTH_CLIENT_ID=...
 NEXT_PUBLIC_WEB3AUTH_NETWORK=sapphire_mainnet
 NEXT_PUBLIC_WEB3AUTH_REDIRECT_URL=https://your-vercel-domain.vercel.app
 NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=...
 AUTH_SECRET=...

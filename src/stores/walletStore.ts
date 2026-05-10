@@ -104,11 +104,11 @@ function getWalletErrorMessage(error: unknown): string {
       message,
     )
   ) {
-    return "Web3Auth login is not fully enabled for this project. In the Web3Auth dashboard, enable Google and Email Passwordless for the Web platform, then try again.";
+    return "Web3Auth login is not fully enabled for this project. In the Web3Auth dashboard, enable Google and Email Passwordless for the Web platform, then add their auth connection IDs to the app environment.";
   }
 
   if (/web3auth_no_provider/i.test(message)) {
-    return "Web3Auth did not return a wallet. Check that Google login is enabled for this project and domain.";
+    return "Web3Auth did not return a wallet. Check that this project has Google or Email enabled and that the matching auth connection ID is configured.";
   }
 
   if (/wallet|not installed|not available|unsupported/i.test(message)) {
@@ -121,6 +121,10 @@ function getWalletErrorMessage(error: unknown): string {
 
   if (/client.?id|whitelist|origin|domain|redirect|forbidden|unauthori|not allowed|access denied|localhost|validate redirect/i.test(message)) {
     return "Web3Auth is not configured for this app URL. Add http://localhost:3000 and https://cyclos-hryvnia.vercel.app to the Web3Auth dashboard domain whitelist.";
+  }
+
+  if (/init parameters not found|storage|session|empty hash|query parameters|reload/i.test(message)) {
+    return "The Web3Auth login session expired before the redirect finished. Start sign-in again from this page.";
   }
 
   if (process.env.NODE_ENV === "development" && message) {

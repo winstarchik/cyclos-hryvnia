@@ -18,7 +18,13 @@ import {
   useSignAndSendTransaction,
   useSolanaWallet,
 } from "@web3auth/modal/react/solana";
-import { WEB3AUTH_AUTH_CONNECTION_ID, hasWeb3AuthClientId } from "@/lib/env";
+import {
+  WEB3AUTH_EMAIL_AUTH_CONNECTION_ID,
+  WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID,
+  WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID,
+  WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID,
+  hasWeb3AuthClientId,
+} from "@/lib/env";
 import { logDevError } from "@/lib/errors";
 import {
   INJECTED_SOLANA_WALLET_NOT_FOUND,
@@ -41,6 +47,16 @@ const SOCIAL_AUTH_CONNECTIONS = {
   SocialLoginProvider,
   (typeof AUTH_CONNECTION)[keyof typeof AUTH_CONNECTION]
 >;
+
+const SOCIAL_AUTH_CONNECTION_IDS = {
+  email: WEB3AUTH_EMAIL_AUTH_CONNECTION_ID,
+  google: WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID,
+} as const satisfies Record<SocialLoginProvider, string>;
+
+const SOCIAL_GROUPED_AUTH_CONNECTION_IDS = {
+  email: WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID,
+  google: WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID,
+} as const satisfies Record<SocialLoginProvider, string>;
 
 const WEB3AUTH_CONNECT_TIMEOUT_MS = 30_000;
 
@@ -285,19 +301,26 @@ export function useWallet(): UseWalletResult {
 
   const connectSocial = useCallback(
     async (socialProvider: SocialLoginProvider, loginHint?: string) => {
-      await connectWithWeb3Auth(() =>
-        connectTo(WALLET_CONNECTORS.AUTH, {
-          authConnection: SOCIAL_AUTH_CONNECTIONS[socialProvider],
-          ...(WEB3AUTH_AUTH_CONNECTION_ID
-            ? { authConnectionId: WEB3AUTH_AUTH_CONNECTION_ID }
-            : {}),
-          ...(loginHint
-            ? {
-                extraLoginOptions: { login_hint: loginHint },
-                loginHint,
-              }
-            : {}),
-        }),
+      const authConnectionId = SOCIAL_AUTH_CONNECTION_IDS[socialProvider];
+      const groupedAuthConnectionId =
+        SOCIAL_GROUPED_AUTH_CONNECTION_IDS[socialProvider];
+
+      await connectWithWeb3Auth(
+        () =>
+          connectTo(WALLET_CONNECTORS.AUTH, {
+            authConnection: SOCIAL_AUTH_CONNECTIONS[socialProvider],
+            ...(authConnectionId ? { authConnectionId } : {}),
+            ...(groupedAuthConnectionId ? { groupedAuthConnectionId } : {}),
+            ...(loginHint
+              ? {
+                  extraLoginOptions: { login_hint: loginHint },
+                  loginHint,
+                }
+              : {}),
+          }),
+        // Redirect-mode auth intentionally leaves this page; a local timeout can
+        // race the provider callback and leave a stale generic error behind.
+        { timeoutMs: null },
       );
     },
     [connectTo, connectWithWeb3Auth],

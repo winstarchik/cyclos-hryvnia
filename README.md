@@ -142,8 +142,12 @@ NEXT_PUBLIC_WEB3AUTH_NETWORK=sapphire_mainnet
 # Optional: explicit redirect URL for Web3Auth social login
 NEXT_PUBLIC_WEB3AUTH_REDIRECT_URL=http://localhost:3000
 
-# Optional: only if Google uses a custom auth connection in Web3Auth
+# Optional but recommended for direct Web3Auth custom buttons
 NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID=
+NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 
 # Server-only values, never prefix with NEXT_PUBLIC_
 TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
