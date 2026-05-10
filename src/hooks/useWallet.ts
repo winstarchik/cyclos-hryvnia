@@ -29,11 +29,12 @@ import {
   type WalletStore,
 } from "@/stores/walletStore";
 
-export type SocialLoginProvider = "google";
+export type SocialLoginProvider = "google" | "email";
 
 let hasAttemptedEmailSessionRestore = false;
 
 const SOCIAL_AUTH_CONNECTIONS = {
+  email: AUTH_CONNECTION.EMAIL_PASSWORDLESS,
   google: AUTH_CONNECTION.GOOGLE,
 } as const satisfies Record<
   SocialLoginProvider,
@@ -90,6 +91,7 @@ export type UseWalletResult = Pick<
     provider: SocialLoginProvider,
     loginHint?: string,
   ) => Promise<void>;
+  connectEmail: (loginHint?: string) => Promise<void>;
   connectGoogle: () => Promise<void>;
   setEmailPasswordSession: (email: string) => void;
   /**
@@ -281,17 +283,30 @@ export function useWallet(): UseWalletResult {
   }, [connect, connectWithWeb3Auth]);
 
   const connectSocial = useCallback(
-    async (socialProvider: SocialLoginProvider) => {
+    async (socialProvider: SocialLoginProvider, loginHint?: string) => {
       await connectWithWeb3Auth(() =>
         connectTo(WALLET_CONNECTORS.AUTH, {
           authConnection: SOCIAL_AUTH_CONNECTIONS[socialProvider],
           ...(WEB3AUTH_AUTH_CONNECTION_ID
             ? { authConnectionId: WEB3AUTH_AUTH_CONNECTION_ID }
             : {}),
+          ...(loginHint
+            ? {
+                extraLoginOptions: { login_hint: loginHint },
+                loginHint,
+              }
+            : {}),
         }),
       );
     },
     [connectTo, connectWithWeb3Auth],
+  );
+
+  const connectEmail = useCallback(
+    async (loginHint?: string) => {
+      await connectSocial("email", loginHint);
+    },
+    [connectSocial],
   );
 
   const connectGoogle = useCallback(async () => {
@@ -401,6 +416,7 @@ export function useWallet(): UseWalletResult {
     error,
     connectWallet,
     connectSocial,
+    connectEmail,
     connectGoogle,
     setEmailPasswordSession,
     connectExternalWallet,

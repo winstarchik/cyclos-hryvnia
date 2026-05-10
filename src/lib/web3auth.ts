@@ -60,6 +60,16 @@ function getRedirectUrl() {
 }
 
 const socialLoginMethods: LoginMethodConfig = {
+  [AUTH_CONNECTION.EMAIL_PASSWORDLESS]: {
+    name: "Email",
+    description: "Continue with Email",
+    mainOption: true,
+    showOnModal: true,
+    authConnection: AUTH_CONNECTION.EMAIL_PASSWORDLESS,
+    ...(WEB3AUTH_AUTH_CONNECTION_ID
+      ? { authConnectionId: WEB3AUTH_AUTH_CONNECTION_ID }
+      : {}),
+  },
   [AUTH_CONNECTION.GOOGLE]: {
     name: "Google",
     description: "Continue with Google",
@@ -92,7 +102,10 @@ const web3AuthOptions: Web3AuthOptions = {
     appName: "Cyclos Hryvnia",
     mode: "dark",
     uxMode: UX_MODE.REDIRECT,
-    loginMethodsOrder: [AUTH_CONNECTION.GOOGLE],
+    loginMethodsOrder: [
+      AUTH_CONNECTION.EMAIL_PASSWORDLESS,
+      AUTH_CONNECTION.GOOGLE,
+    ],
   },
   modalConfig: {
     // Web3Auth Modal v10 discovers supported external wallets from the browser

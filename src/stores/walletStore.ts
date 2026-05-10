@@ -4,8 +4,8 @@ import { handleError, isNetworkError } from "@/lib/errors";
 /**
  * Wallet provider options supported by the app.
  *
- * Email-code auth gates the app through our server session. Web3Auth Google and
- * injected Solana wallets provide blockchain accounts.
+ * Email-code auth can identify an app account, but only Web3Auth and injected
+ * Solana wallets provide a real blockchain account/address.
  */
 export type WalletProvider =
   | "email"
@@ -137,7 +137,7 @@ export const useWalletStore = create<WalletStore>()((set) => ({
     set({
       address: null,
       email,
-      connected: true,
+      connected: false,
       provider: "email",
       connectorName: "email-code",
       loading: false,

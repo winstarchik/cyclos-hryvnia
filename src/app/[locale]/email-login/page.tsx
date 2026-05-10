@@ -58,7 +58,7 @@ export default function EmailLoginPage() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setEmailPasswordSession, clearError } = useWallet();
+  const { connectEmail, setEmailPasswordSession, clearError } = useWallet();
   const initialMode = useMemo<AuthMode>(
     () => (searchParams.get("mode") === "register" ? "register" : "login"),
     [searchParams],
@@ -206,6 +206,7 @@ export default function EmailLoginPage() {
 
       const authenticatedEmail = payload.data?.user?.email ?? trimmedEmail;
       setEmailPasswordSession(authenticatedEmail);
+      await connectEmail(authenticatedEmail);
       router.replace(`/${locale}/wallet`);
     } finally {
       setIsLoading(false);

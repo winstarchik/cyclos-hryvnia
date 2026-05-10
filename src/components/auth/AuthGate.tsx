@@ -7,7 +7,6 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { useWallet } from "@/hooks/useWallet";
 
 const PROTECTED_ROUTES = ["/wallet", "/history", "/receive", "/send"];
-const PREVIEW_AUTH_BYPASS = true;
 
 interface AuthGateProps {
   children: ReactNode;
@@ -18,12 +17,9 @@ export function AuthGate({ children }: AuthGateProps) {
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
-  const { connected, loading } = useWallet();
+  const { address, connected, loading } = useWallet();
   const [mounted, setMounted] = useState(false);
-
-  if (PREVIEW_AUTH_BYPASS) {
-    return <>{children}</>;
-  }
+  const hasBlockchainWallet = connected && Boolean(address);
 
   const isProtectedRoute = useMemo(
     () =>
@@ -39,11 +35,11 @@ export function AuthGate({ children }: AuthGateProps) {
   }, []);
 
   useEffect(() => {
-    if (!mounted || !isProtectedRoute || connected || loading) return;
+    if (!mounted || !isProtectedRoute || hasBlockchainWallet || loading) return;
     router.replace(`/${locale}`);
-  }, [connected, isProtectedRoute, loading, locale, mounted, router]);
+  }, [hasBlockchainWallet, isProtectedRoute, loading, locale, mounted, router]);
 
-  if (isProtectedRoute && (!mounted || loading || !connected)) {
+  if (isProtectedRoute && (!mounted || loading || !hasBlockchainWallet)) {
     return (
       <main className="cy-page flex min-h-screen items-center justify-center px-6 text-center">
         <div className="cy-card-soft w-full max-w-sm p-6">

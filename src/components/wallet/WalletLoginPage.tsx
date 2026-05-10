@@ -10,7 +10,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { hasWeb3AuthClientId } from "@/lib/env";
 import { INJECTED_SOLANA_WALLET_NOT_FOUND } from "@/lib/injectedSolana";
 
-type AuthAction = "google" | "wallet";
+type AuthAction = "email" | "google" | "wallet";
 type AuthMode = "login" | "register";
 
 function getElementText(element: Element) {
@@ -284,6 +284,7 @@ export function WalletLoginPage() {
   const router = useRouter();
   const {
     connectGoogle,
+    connectEmail,
     connectWallet,
     connected,
     loading: walletLoading,
@@ -328,7 +329,7 @@ export function WalletLoginPage() {
     action: AuthAction,
     connectAction: () => Promise<void>,
   ) {
-    if (action === "google" && !web3AuthConfigured) {
+    if (action !== "wallet" && !web3AuthConfigured) {
       clearError();
       setLocalErrorKey("web3AuthConfigError");
       return;
@@ -411,15 +412,21 @@ export function WalletLoginPage() {
             </p>
 
             <div className="mt-5 space-y-3" aria-busy={isConnecting} aria-live="polite">
-              <Link
-                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-accent-600/20 transition hover:scale-[1.02] hover:from-accent-600 hover:to-accent-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400/60 active:scale-[0.98] motion-reduce:transition-none"
-                href={`/${locale}/email-login?mode=${authMode}`}
+              <Button
+                className="h-12 rounded-2xl text-sm"
+                disabled={isConnecting}
+                fullWidth
+                isLoading={loadingAction === "email"}
+                loadingText={common("connecting")}
+                onClick={() => runAuthAction("email", connectEmail)}
+                size="md"
+                type="button"
               >
                 <ProviderMark>@</ProviderMark>
                 {authMode === "login"
                   ? t("loginWithEmail")
                   : t("createAccountWithEmail")}
-              </Link>
+              </Button>
 
               <div className="my-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
                 <span className="h-px flex-1 bg-dark-800" />
