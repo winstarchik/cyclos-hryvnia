@@ -1,78 +1,272 @@
+/**
+ * hooks/useBalance.ts
+ *
+ * Non-custodial balance hook for Cyclos Hryvnia.
+ *
+ * Fetches:
+ *   1. Native SOL balance via `getBalance`
+ *   2. SPL-token balances via `getParsedTokenAccountsByOwner`
+ *   3. USD prices + 24h change from CoinGecko (free tier, no API key)
+ *
+ * Prices are module-level cached for PRICE_CACHE_TTL (60 s) so that
+ * multiple renders never hammer the public endpoint.
+ */
+
 "use client";
 
-import { useCallback, useEffect } from "react";
-import { useBalanceStore } from "@/stores/balanceStore";
-import type { Balance } from "@/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Connection,
+  PublicKey,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
 import { useWallet } from "./useWallet";
+import type { Balance } from "@/types";
+import {
+  KNOWN_TOKENS,
+  COINGECKO_IDS,
+  COINGECKO_ID_TO_KEY,
+  PRICE_CACHE_TTL,
+  type TokenMeta,
+} from "@/constants/tokens";
 
-const REFRESH_INTERVAL_MS = 30_000;
+const TOKEN_PROGRAM_ID = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+);
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface PriceEntry {
+  usd: number;
+  usd_24h_change: number;
+}
+
+type PriceMap = Record<string, PriceEntry>; // coingeckoId → entry
+
+interface PriceCache {
+  data: PriceMap;
+  fetchedAt: number;
+}
 
 export interface UseBalanceResult {
-  balances: Balance[];
+  balances: (Balance & { changePercent?: number })[];
+  totalValueUSD: number;
   loading: boolean;
   error: string | null;
-  totalValueUSD: number;
-  lastUpdated: number | null;
   refetch: () => Promise<void>;
 }
 
-/**
- * Reads cached wallet balances and refreshes them while a wallet is connected.
- *
- * @example
- * ```tsx
- * const { balances, loading, totalValueUSD } = useBalance();
- * const solBalance = useBalance("SOL");
- * ```
- */
-export function useBalance(): UseBalanceResult;
-export function useBalance(token: string): Balance | undefined;
-export function useBalance(
-  token?: string,
-): UseBalanceResult | Balance | undefined {
-  const { address, connected } = useWallet();
-  const balances = useBalanceStore((state) => state.balances);
-  const loading = useBalanceStore((state) => state.loading);
-  const error = useBalanceStore((state) => state.error);
-  const lastUpdated = useBalanceStore((state) => state.lastUpdated);
-  const fetchBalances = useBalanceStore((state) => state.fetchBalances);
-  const getBalance = useBalanceStore((state) => state.getBalance);
-  const getTotalUSD = useBalanceStore((state) => state.getTotalUSD);
+// ─── Module-level price cache ─────────────────────────────────────────────────
 
-  const hasWallet = connected && Boolean(address);
+let priceCache: PriceCache | null = null;
 
-  const refetch = useCallback(async () => {
-    if (!connected || !address) return;
+async function fetchPrices(): Promise<PriceMap> {
+  const now = Date.now();
+  if (priceCache && now - priceCache.fetchedAt < PRICE_CACHE_TTL) {
+    return priceCache.data;
+  }
 
-    await fetchBalances(address);
-  }, [connected, address, fetchBalances]);
+  const ids = COINGECKO_IDS.join(",");
+  const url =
+    `https://api.coingecko.com/api/v3/simple/price` +
+    `?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
 
-  useEffect(() => {
-    if (!connected || !address) return;
+  const res = await fetch(url, {
+    headers: { Accept: "application/json" },
+    // Treat as GET cache-revalidation so Next.js edge can cache it too
+    next: { revalidate: 60 },
+  } as RequestInit);
 
-    // Refetch on address change.
-    void fetchBalances(address);
+  if (!res.ok) {
+    throw new Error(`CoinGecko error: ${res.status}`);
+  }
 
-    // Auto-refresh: 30 seconds.
-    const intervalId = window.setInterval(() => {
-      void fetchBalances(address);
-    }, REFRESH_INTERVAL_MS);
+  const json = (await res.json()) as Record<
+    string,
+    { usd?: number; usd_24h_change?: number }
+  >;
 
-    // Cleanup prevents memory leaks.
-    return () => window.clearInterval(intervalId);
-  }, [connected, address, fetchBalances]);
+  const data: PriceMap = {};
+  for (const [id, val] of Object.entries(json)) {
+    data[id] = {
+      usd: val.usd ?? 0,
+      usd_24h_change: val.usd_24h_change ?? 0,
+    };
+  }
 
-  if (token) {
-    return hasWallet ? getBalance(token) : undefined;
+  priceCache = { data, fetchedAt: now };
+  return data;
+}
+
+// ─── RPC connection (singleton per module) ────────────────────────────────────
+
+function getConnection(): Connection {
+  const rpc =
+    process.env.NEXT_PUBLIC_SOLANA_RPC ??
+    "https://api.mainnet-beta.solana.com";
+  return new Connection(rpc, "confirmed");
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function buildBalance(
+  meta: TokenMeta,
+  mintOrSOL: string,
+  amount: number,
+  prices: PriceMap,
+): Balance & { changePercent?: number } {
+  // Resolve USD price
+  let usdPrice: number;
+  let changePercent: number | undefined;
+
+  if (meta.fixedUSD !== undefined) {
+    usdPrice = meta.fixedUSD;
+    changePercent = undefined; // pegged — no meaningful 24h change
+  } else if (meta.coingeckoId) {
+    const entry = prices[meta.coingeckoId];
+    usdPrice = entry?.usd ?? 0;
+    changePercent = entry?.usd_24h_change;
+  } else {
+    usdPrice = 0;
   }
 
   return {
-    balances: hasWallet ? balances : [],
-    loading: hasWallet ? loading : false,
-    error: hasWallet ? error : null,
-    totalValueUSD: hasWallet ? getTotalUSD() : 0,
-    lastUpdated: hasWallet ? lastUpdated : null,
-    refetch,
+    token: {
+      address: mintOrSOL,
+      symbol: meta.symbol,
+      name: meta.name,
+      decimals: meta.decimals,
+      logo: meta.logo || null,
+      chain: "solana",
+      price: usdPrice || null,
+    },
+    amount,
+    valueUSD: amount * usdPrice,
+    changePercent,
   };
 }
 
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
+export function useBalance(): UseBalanceResult {
+  const { address } = useWallet();
+
+  const [balances, setBalances] = useState<
+    (Balance & { changePercent?: number })[]
+  >([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Prevent stale async results from updating unmounted component
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchBalances = useCallback(async (): Promise<void> => {
+    if (!address) {
+      setBalances([]);
+      return;
+    }
+
+    // Cancel any in-flight fetch
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const publicKey = new PublicKey(address);
+      const connection = getConnection();
+
+      // ── 1. Fetch prices and SOL balance in parallel ──────────────────────
+      const [prices, lamports] = await Promise.all([
+        fetchPrices().catch(() => ({} as PriceMap)),
+        connection.getBalance(publicKey),
+      ]);
+
+      if (controller.signal.aborted) return;
+
+      const results: (Balance & { changePercent?: number })[] = [];
+
+      // ── 2. SOL (native) ──────────────────────────────────────────────────
+      const solMeta = KNOWN_TOKENS["SOL"];
+      if (solMeta) {
+        const solAmount = lamports / LAMPORTS_PER_SOL;
+        results.push(buildBalance(solMeta, "SOL", solAmount, prices));
+      }
+
+      // ── 3. SPL Tokens ────────────────────────────────────────────────────
+      const tokenAccounts =
+        await connection.getParsedTokenAccountsByOwner(publicKey, {
+          programId: TOKEN_PROGRAM_ID,
+        });
+
+      if (controller.signal.aborted) return;
+
+      for (const { account } of tokenAccounts.value) {
+        const parsed = account.data.parsed as {
+          info?: {
+            mint?: string;
+            tokenAmount?: { uiAmount?: number | null };
+          };
+        };
+
+        const mint = parsed?.info?.mint;
+        const uiAmount = parsed?.info?.tokenAmount?.uiAmount ?? 0;
+
+        if (!mint) continue;
+
+        // Skip dust / zero balances
+        if (uiAmount <= 0) continue;
+
+        const meta = KNOWN_TOKENS[mint];
+        if (!meta) continue; // unknown token — skip for now
+
+        results.push(buildBalance(meta, mint, uiAmount, prices));
+      }
+
+      // ── 4. Sort: cUAH first, then by USD value desc ──────────────────────
+      results.sort((a, b) => {
+        if (a.token.symbol === "cUAH") return -1;
+        if (b.token.symbol === "cUAH") return 1;
+        return b.valueUSD - a.valueUSD;
+      });
+
+      setBalances(results);
+    } catch (err: unknown) {
+      if (controller.signal.aborted) return;
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch balances";
+      setError(message);
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
+    }
+  }, [address]);
+
+  // Initial fetch + refresh on address change
+  useEffect(() => {
+    void fetchBalances();
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [fetchBalances]);
+
+  // Auto-refresh every 30 seconds while mounted
+  useEffect(() => {
+    if (!address) return;
+    const interval = setInterval(() => void fetchBalances(), 30_000);
+    return () => clearInterval(interval);
+  }, [address, fetchBalances]);
+
+  const totalValueUSD = balances.reduce((sum, b) => sum + b.valueUSD, 0);
+
+  return {
+    balances,
+    totalValueUSD,
+    loading,
+    error,
+    refetch: fetchBalances,
+  };
+}

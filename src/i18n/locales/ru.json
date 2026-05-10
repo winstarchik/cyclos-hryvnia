@@ -120,7 +120,20 @@
     "copyAddress": "Скопировать адрес",
     "onlySend": "Отправляйте на этот адрес только активы Solana.",
     "onlySendToken": "Отправляйте на этот адрес только {symbol} в сети Solana.",
-    "copyError": "Не удалось скопировать адрес. Вы можете выделить его вручную."
+    "copyError": "Не удалось скопировать адрес. Вы можете выделить его вручную.",
+    "modeAddress": "Адрес",
+    "modeInvoice": "Счет",
+    "invoiceAmount": "Сумма счета",
+    "invoiceAmountPlaceholder": "0.00",
+    "invoiceMemo": "Комментарий",
+    "invoiceMemoPlaceholder": "Назначение платежа",
+    "paymentRequest": "Платежный счет",
+    "invoiceReference": "Референс счета",
+    "refreshInvoice": "Обновить",
+    "copyPaymentLink": "Скопировать ссылку",
+    "sharePaymentLink": "Поделиться",
+    "invoiceQrHint": "Отсканируйте QR в кошельке с поддержкой Solana Pay, чтобы оплатить счет.",
+    "invoiceUnsupportedToken": "Для QR-счета {symbol} нужен развернутый mint в Solana. Сейчас показан QR адреса."
   },
   "send": {
     "title": "Отправить криптовалюту",
@@ -148,7 +161,18 @@
     "button": "Отправить",
     "processing": "Обрабатываем...",
     "transactionSent": "Транзакция успешно отправлена.",
-    "viewOnExplorer": "Открыть в Solana Explorer"
+    "viewOnExplorer": "Открыть в Solana Explorer",
+    "recipient": "Получатель",
+    "invalidAddress": "Некорректный адрес Solana.",
+    "amountPositive": "Сумма должна быть больше нуля.",
+    "signing": "Ожидаем подпись...",
+    "sending": "Отправляем...",
+    "sendButton": "Отправить",
+    "networkNotice": "Транзакции необратимы. Проверьте адрес получателя и токен перед подписью.",
+    "successTitle": "Отправлено!",
+    "successTo": "отправлено на",
+    "viewOnSolscan": "Открыть в Solscan",
+    "sendAnother": "Отправить еще"
   },
   "nav": {
     "label": "Основная навигация",

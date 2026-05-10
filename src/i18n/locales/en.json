@@ -120,7 +120,20 @@
     "copyAddress": "Copy Address",
     "onlySend": "Only send Solana assets to this address.",
     "onlySendToken": "Only send {symbol} on Solana to this address.",
-    "copyError": "We could not copy the address. You can select it manually."
+    "copyError": "We could not copy the address. You can select it manually.",
+    "modeAddress": "Address",
+    "modeInvoice": "Invoice",
+    "invoiceAmount": "Invoice amount",
+    "invoiceAmountPlaceholder": "0.00",
+    "invoiceMemo": "Memo",
+    "invoiceMemoPlaceholder": "Payment note",
+    "paymentRequest": "Payment request",
+    "invoiceReference": "Invoice reference",
+    "refreshInvoice": "Refresh",
+    "copyPaymentLink": "Copy Link",
+    "sharePaymentLink": "Share Link",
+    "invoiceQrHint": "Scan this QR with a Solana Pay compatible wallet to pay the invoice.",
+    "invoiceUnsupportedToken": "{symbol} invoice QR needs a deployed Solana mint. Address QR is shown for now."
   },
   "send": {
     "title": "Send Crypto",
@@ -148,7 +161,18 @@
     "button": "Send",
     "processing": "Processing...",
     "transactionSent": "Transaction sent successfully.",
-    "viewOnExplorer": "View on Solana Explorer"
+    "viewOnExplorer": "View on Solana Explorer",
+    "recipient": "Recipient",
+    "invalidAddress": "Invalid Solana address.",
+    "amountPositive": "Amount must be greater than zero.",
+    "signing": "Waiting for signature...",
+    "sending": "Sending...",
+    "sendButton": "Send",
+    "networkNotice": "Transactions are irreversible. Double-check the recipient address and token before signing.",
+    "successTitle": "Sent!",
+    "successTo": "sent to",
+    "viewOnSolscan": "View on Solscan",
+    "sendAnother": "Send another"
   },
   "nav": {
     "label": "Main navigation",

@@ -5,6 +5,7 @@ import {
   WEB3AUTH_NETWORK,
   WALLET_CONNECTORS,
   authConnector,
+  walletConnectV2Connector,
   type LoginMethodConfig,
   type Web3AuthOptions,
 } from "@web3auth/modal";
@@ -83,6 +84,7 @@ const web3AuthOptions: Web3AuthOptions = {
         uxMode: UX_MODE.REDIRECT,
       },
     }),
+    walletConnectV2Connector({}),
   ],
   storageType: "local",
   enableLogging: process.env.NODE_ENV === "development",
@@ -102,6 +104,10 @@ const web3AuthOptions: Web3AuthOptions = {
         label: "Social login",
         showOnModal: true,
         loginMethods: socialLoginMethods,
+      },
+      [WALLET_CONNECTORS.WALLET_CONNECT_V2]: {
+        label: "All wallets",
+        showOnModal: true,
       },
     },
   },

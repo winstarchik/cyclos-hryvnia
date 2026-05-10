@@ -40,6 +40,11 @@ export interface Balance {
   amount: number;
   /** USD valuation of `amount` at `token.price`. */
   valueUSD: number;
+  /**
+   * 24-hour price change percentage sourced from CoinGecko.
+   * Undefined when the price feed does not provide change data (e.g. cUAH).
+   */
+  changePercent?: number;
 }
 
 /**

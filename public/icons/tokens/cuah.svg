@@ -1,13 +1,20 @@
 <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="80" height="80" rx="40" fill="#050712"/>
-  <circle cx="40" cy="40" r="31" fill="url(#cuahA)" opacity="0.95"/>
-  <path d="M25 30C25 25.6 28.6 22 33 22H52V29H33C32.4 29 32 29.4 32 30V50C32 50.6 32.4 51 33 51H52V58H33C28.6 58 25 54.4 25 50V30Z" fill="white"/>
-  <path d="M38 36H55V43H38V36Z" fill="#050712" opacity="0.88"/>
+  <rect width="80" height="80" rx="40" fill="#070B18"/>
+  <circle cx="40" cy="40" r="32" fill="url(#cuahGlow)"/>
+  <circle cx="40" cy="40" r="25" fill="url(#cuahCore)"/>
+  <path d="M25 33H55" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  <path d="M25 44H55" stroke="white" stroke-width="5" stroke-linecap="round"/>
+  <path d="M43.5 20.5V48.2C43.5 55.2 39 60 31.6 60C28.3 60 25.2 59.1 22.8 57.5L25.4 51.3C27.2 52.4 29.1 53 31.3 53C35 53 37 51.1 37 47.7V20.5H43.5Z" fill="white"/>
   <defs>
-    <linearGradient id="cuahA" x1="14" x2="66" y1="18" y2="62" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#00D4FF"/>
-      <stop offset="0.5" stop-color="#0099FF"/>
-      <stop offset="1" stop-color="#14F195"/>
+    <linearGradient id="cuahGlow" x1="14" x2="66" y1="14" y2="66" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4B78FF"/>
+      <stop offset="0.45" stop-color="#2A55FF"/>
+      <stop offset="1" stop-color="#101A70"/>
+    </linearGradient>
+    <linearGradient id="cuahCore" x1="20" x2="58" y1="18" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6BA8FF"/>
+      <stop offset="0.46" stop-color="#315DFF"/>
+      <stop offset="1" stop-color="#152287"/>
     </linearGradient>
   </defs>
 </svg>

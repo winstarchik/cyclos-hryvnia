@@ -1,6 +1,11 @@
 "use client";
 
-import type { Transaction as SolanaTransaction } from "@solana/web3.js";
+import type {
+  Transaction as SolanaTransaction,
+  VersionedTransaction,
+} from "@solana/web3.js";
+
+export type SignableSolanaTransaction = SolanaTransaction | VersionedTransaction;
 
 export type InjectedSolanaWalletId = "phantom" | "solflare";
 
@@ -14,11 +19,11 @@ export interface InjectedSolanaProvider {
   }>;
   disconnect?: () => Promise<void>;
   signAndSendTransaction?: (
-    transaction: SolanaTransaction,
+    transaction: SignableSolanaTransaction,
   ) => Promise<{ signature: string } | string>;
   signTransaction?: (
-    transaction: SolanaTransaction,
-  ) => Promise<SolanaTransaction>;
+    transaction: SignableSolanaTransaction,
+  ) => Promise<SignableSolanaTransaction>;
 }
 
 export interface InjectedSolanaWallet {

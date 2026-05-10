@@ -4,6 +4,7 @@ interface MarketTokenConfig {
   id: string | null;
   symbol: string;
   name: string;
+  logo: string;
   fallbackPrice: number;
   fallbackChange24h: number;
   color: string;
@@ -12,6 +13,7 @@ interface MarketTokenConfig {
 interface MarketTokenResponse {
   symbol: string;
   name: string;
+  logo: string;
   priceUSD: number;
   change24h: number;
   color: string;
@@ -20,9 +22,19 @@ interface MarketTokenResponse {
 
 const MARKET_TOKENS: MarketTokenConfig[] = [
   {
+    id: null,
+    symbol: "cUAH",
+    name: "Cyclos Hryvnia",
+    logo: "/icons/tokens/cuah.svg",
+    fallbackPrice: 0.024,
+    fallbackChange24h: 0,
+    color: "#4169E1",
+  },
+  {
     id: "solana",
     symbol: "SOL",
     name: "Solana",
+    logo: "/icons/tokens/sol.svg",
     fallbackPrice: 150,
     fallbackChange24h: 2.8,
     color: "#14F195",
@@ -31,6 +43,7 @@ const MARKET_TOKENS: MarketTokenConfig[] = [
     id: "bitcoin",
     symbol: "BTC",
     name: "Bitcoin",
+    logo: "/icons/tokens/btc.svg",
     fallbackPrice: 65_000,
     fallbackChange24h: 1.4,
     color: "#F7931A",
@@ -39,6 +52,7 @@ const MARKET_TOKENS: MarketTokenConfig[] = [
     id: "tether",
     symbol: "USDT",
     name: "Tether",
+    logo: "/icons/tokens/usdt.svg",
     fallbackPrice: 1,
     fallbackChange24h: 0.01,
     color: "#26A17B",
@@ -47,22 +61,16 @@ const MARKET_TOKENS: MarketTokenConfig[] = [
     id: "usd-coin",
     symbol: "USDC",
     name: "USD Coin",
+    logo: "/icons/tokens/usdc.svg",
     fallbackPrice: 1,
     fallbackChange24h: 0,
     color: "#2775CA",
   },
   {
-    id: null,
-    symbol: "cUAH",
-    name: "Cyclos Hryvnia",
-    fallbackPrice: 0.024,
-    fallbackChange24h: 0,
-    color: "#4169E1",
-  },
-  {
     id: "binancecoin",
     symbol: "BNB",
     name: "BNB",
+    logo: "/icons/tokens/bnb.svg",
     fallbackPrice: 600,
     fallbackChange24h: 1.1,
     color: "#F3BA2F",
@@ -78,10 +86,12 @@ const corsHeaders = {
 
 function fallbackPoints(price: number, change24h: number): number[] {
   const drift = change24h / 100;
-  return Array.from({ length: 24 }).map((_, index) => {
-    const progress = index / 23;
-    const wave = Math.sin(index * 0.75) * 0.006;
-    return Number((price * (1 - drift + progress * drift + wave)).toFixed(8));
+  const offsets = [-0.006, -0.003, -0.004, 0.001, -0.001, 0.004, 0.003, 0.007];
+
+  return offsets.map((offset, index) => {
+    const progress = index / (offsets.length - 1);
+    const trend = -drift + progress * drift;
+    return Number((price * (1 + trend + offset)).toFixed(8));
   });
 }
 
@@ -89,6 +99,7 @@ function fallbackToken(token: MarketTokenConfig): MarketTokenResponse {
   return {
     symbol: token.symbol,
     name: token.name,
+    logo: token.logo,
     priceUSD: token.fallbackPrice,
     change24h: token.fallbackChange24h,
     color: token.color,
@@ -140,6 +151,7 @@ async function fetchCoinGeckoToken(
   return {
     symbol: token.symbol,
     name: token.name,
+    logo: token.logo,
     priceUSD: last,
     change24h,
     color: token.color,

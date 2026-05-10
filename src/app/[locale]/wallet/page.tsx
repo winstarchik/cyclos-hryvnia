@@ -1,80 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { MarketCharts } from "@/components/market/MarketCharts";
+import { BalanceCard } from "@/components/wallet/BalanceCard";
 import { TokenList } from "@/components/wallet/TokenList";
 import { useBalance } from "@/hooks/useBalance";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useWallet } from "@/hooks/useWallet";
 import type { Transaction } from "@/types";
 
-type WalletTab = "assets" | "activity" | "market";
+type WalletTab = "market" | "assets" | "activity";
 
-function ArrowUpRightIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M7 17 17 7M17 7H8M17 7v9"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.2"
-      />
-    </svg>
-  );
-}
-
-function ArrowDownIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M12 5v14M5.5 12.5 12 19l6.5-6.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.2"
-      />
-    </svg>
-  );
-}
-
-function CUAHIcon({ size = 52 }: { size?: number }) {
-  return (
-    <svg aria-hidden="true" fill="none" height={size} viewBox="0 0 52 52" width={size}>
-      <circle cx="26" cy="26" fill="#4169e1" r="26" />
-      <circle cx="18" cy="15" fill="white" opacity="0.18" r="9" />
-      <text
-        dominantBaseline="middle"
-        fill="white"
-        fontSize="26"
-        fontWeight="700"
-        textAnchor="middle"
-        x="50%"
-        y="55%"
-      >
-        ₴
-      </text>
-    </svg>
-  );
-}
-
+/* ── Skeleton rows ─────────────────────────────────────────── */
 function RowSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: count }).map((_, index) => (
-        <div className="cy-card flex items-center gap-3 p-4" key={index}>
+    <div className="flex flex-col">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 rounded-2xl px-3 py-3">
           <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-white/[0.07]" />
-          <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex-1 space-y-2">
             <div className="h-4 w-24 animate-pulse rounded-full bg-white/[0.07]" />
-            <div className="h-3 w-16 animate-pulse rounded-full bg-white/[0.06]" />
+            <div className="h-3 w-16 animate-pulse rounded-full bg-white/[0.05]" />
           </div>
-          <div className="space-y-2">
-            <div className="h-4 w-20 animate-pulse rounded-full bg-white/[0.07]" />
-            <div className="ml-auto h-3 w-14 animate-pulse rounded-full bg-white/[0.06]" />
+          <div className="space-y-2 text-right">
+            <div className="ml-auto h-4 w-20 animate-pulse rounded-full bg-white/[0.07]" />
+            <div className="ml-auto h-3 w-14 animate-pulse rounded-full bg-white/[0.05]" />
           </div>
         </div>
       ))}
@@ -82,292 +36,196 @@ function RowSkeleton({ count = 4 }: { count?: number }) {
   );
 }
 
-function formatCurrency(value: number, locale: string) {
-  const intlLocale = locale === "ua" ? "uk-UA" : locale;
-  return new Intl.NumberFormat(intlLocale, {
-    currency: "USD",
-    maximumFractionDigits: 2,
-    style: "currency",
-  }).format(value);
-}
-
-function formatToken(value: number, locale: string) {
-  const intlLocale = locale === "ua" ? "uk-UA" : locale;
-  return new Intl.NumberFormat(intlLocale, {
-    maximumFractionDigits: 4,
-    minimumFractionDigits: 0,
-  }).format(value);
-}
-
-function formatAddress(address: string | null) {
-  if (!address) return "";
-  return `${address.slice(0, 4)}...${address.slice(-4)}`;
-}
-
-function TransactionRow({
-  index,
-  transaction,
-}: {
-  index: number;
-  transaction: Transaction;
-}) {
-  const isReceive = transaction.type === "receive";
-  const isSwap = transaction.type === "swap";
+/* ── Transaction row ───────────────────────────────────────── */
+function TxRow({ tx, i }: { tx: Transaction; i: number }) {
+  const isReceive = tx.type === "receive";
+  const isSwap    = tx.type === "swap";
 
   return (
     <div
-      className="animate-fade-in-up cy-card flex items-center gap-3 p-4 transition hover:bg-[#162033]"
-      style={{ animationDelay: `${index * 50}ms` }}
+      className="animate-fade-in-up token-card flex items-center gap-3"
+      style={{ animationDelay: `${i * 35}ms` }}
     >
-      <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-lg ${
-          isReceive
-            ? "bg-green-500/15 text-green-400"
-            : isSwap
-              ? "bg-accent-500/15 text-accent-400"
-              : "bg-red-500/15 text-red-400"
-        }`}
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold
+        ${isReceive ? "bg-green-500/15 text-green-400"
+         : isSwap   ? "bg-accent-500/15 text-accent-400"
+                    : "bg-red-500/15 text-red-400"}`}
       >
         {isReceive ? "↓" : isSwap ? "⇄" : "↑"}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold capitalize text-white">
-          {transaction.type}
-        </p>
-        <p className="mt-1 text-xs text-gray-500">
-          {new Date(transaction.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+        <p className="truncate text-[14px] font-semibold capitalize text-white">{tx.type}</p>
+        <p className="mt-0.5 text-[12px] text-[#3d5070]">
+          {new Date(tx.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
         </p>
       </div>
-      <div className="min-w-0 max-w-[48%] text-right">
-        <p
-          className={`break-words text-sm font-semibold ${
-            isReceive
-              ? "text-green-400"
-              : isSwap
-                ? "text-accent-400"
-                : "text-red-400"
-          }`}
+      <div className="max-w-[48%] shrink-0 text-right">
+        <p className={`break-words text-[14px] font-semibold
+          ${isReceive ? "text-green-400" : isSwap ? "text-accent-400" : "text-red-400"}`}
         >
-          {isReceive ? "+" : isSwap ? "" : "-"}
-          {transaction.amount.toFixed(4)} {transaction.token.symbol}
+          {isReceive ? "+" : isSwap ? "" : "−"}
+          {tx.amount.toFixed(4)} {tx.token.symbol}
         </p>
-        <p className="mt-1 text-xs text-gray-500">
-          ${transaction.valueUSD.toFixed(2)}
-        </p>
+        <p className="mt-0.5 text-[12px] text-[#3d5070]">${tx.valueUSD.toFixed(2)}</p>
       </div>
     </div>
   );
 }
 
+/* ── Page ──────────────────────────────────────────────────── */
 export default function WalletPage() {
-  const t = useTranslations("wallet");
+  const t        = useTranslations("wallet");
   const historyT = useTranslations("history");
-  const common = useTranslations("common");
-  const locale = useLocale();
+  const common   = useTranslations("common");
+  const locale   = useLocale();
   const { address } = useWallet();
-  const {
-    balances,
-    error: balanceError,
-    lastUpdated,
-    loading: balanceLoading,
-    refetch: refetchBalances,
-    totalValueUSD,
-  } = useBalance();
-  const {
-    error: transactionError,
-    loading: transactionLoading,
-    refetch: refetchTransactions,
-    transactions,
-  } = useTransactions();
-  const [tab, setTab] = useState<WalletTab>("assets");
 
-  const cuahBalance = balances.find(
-    (balance) => balance.token.symbol.toLowerCase() === "cuah",
-  );
-  const isInitialBalanceLoad = balanceLoading && balances.length === 0;
-  const isInitialTransactionLoad =
-    transactionLoading && transactions.length === 0;
+  const { balances, error: balErr, loading: balLoading, refetch: refetchBal, totalValueUSD } = useBalance();
+  const { transactions, error: txErr, loading: txLoading, refetch: refetchTx }               = useTransactions();
+
+  const [tab, setTab] = useState<WalletTab>("market");
+
+  const cuahBal = balances.find(b => b.token.symbol.toLowerCase() === "cuah");
+  const initBal = balLoading && balances.length === 0;
+  const initTx  = txLoading  && transactions.length === 0;
+
+  const promoSub =
+    locale === "ru" ? "Ваша цифровая гривна"
+    : locale === "ua" ? "Ваша цифрова гривня"
+    : "Your digital hryvnia";
+
+  const tabs: Array<{ key: WalletTab; label: string }> = [
+    { key: "market",   label: t("market")   },
+    { key: "assets",   label: t("assets")   },
+    { key: "activity", label: t("activity") },
+  ];
 
   return (
-    <main className="cy-page pb-[calc(5rem+env(safe-area-inset-bottom))]">
+    <main className="cy-page" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
       <div className="mx-auto w-full max-w-[480px]">
-        <header className="bg-gradient-to-b from-[#0f1a35] to-dark-950 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
-          <div className="animate-fade-in-up rounded-[1.35rem] border border-accent-500/30 bg-[linear-gradient(135deg,#1a2d5a_0%,#111e42_100%)] p-5 shadow-2xl shadow-black/30">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-[#8ba3e0]">
-                  {t("totalBalance")}
-                </p>
-                {isInitialBalanceLoad ? (
-                  <div className="mt-3 h-10 w-44 animate-pulse rounded-xl bg-white/10" />
-                ) : (
-                  <p className="mt-2 break-words text-3xl font-bold tracking-normal text-white">
-                    {formatCurrency(totalValueUSD, locale)}
-                  </p>
-                )}
-                <p className="mt-2 text-xs font-medium text-green-400">
-                  {cuahBalance
-                    ? `${formatToken(cuahBalance.amount, locale)} cUAH`
-                    : address
-                      ? t("cuahReady")
-                      : t("connectHint")}
-                </p>
-                {!address ? (
-                  <Link
-                    className="mt-3 inline-flex min-h-10 items-center justify-center rounded-xl bg-accent-500 px-4 text-sm font-semibold text-white transition hover:bg-accent-600"
-                    href={`/${locale}`}
-                  >
-                    {t("connectWalletAction")}
-                  </Link>
-                ) : null}
-              </div>
-              <CUAHIcon />
-            </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <Link
-                className="flex min-h-14 flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.06] text-sm font-semibold text-white transition hover:bg-white/[0.1] active:scale-[0.98]"
-                href={`/${locale}/send`}
-              >
-                <ArrowUpRightIcon />
-                <span>{t("send")}</span>
-              </Link>
-              <Link
-                className="flex min-h-14 flex-col items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.06] text-sm font-semibold text-white transition hover:bg-white/[0.1] active:scale-[0.98]"
-                href={`/${locale}/receive`}
-              >
-                <ArrowDownIcon />
-                <span>{t("receive")}</span>
-              </Link>
+        {/* ── Header zone ── */}
+        <header
+          className="bg-gradient-to-b from-[#080f20] to-dark-950 px-4 pb-4"
+          style={{ paddingTop: "calc(env(safe-area-inset-top) + 1rem)" }}
+        >
+          {/* top bar */}
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-[8px]
+                              bg-[radial-gradient(circle_at_35%_35%,#6b8fff,#2441a8)]">
+                <span className="text-[13px] font-bold text-white">₴</span>
+              </div>
+              <span className="text-[14px] font-bold tracking-wider text-white">CYCLOS</span>
+            </div>
+            <LanguageSwitcher className="relative z-30 shrink-0" />
+          </div>
+
+          {/* balance card */}
+          <BalanceCard
+            address={address}
+            loading={initBal}
+            totalValueUSD={totalValueUSD}
+            cuahAmount={cuahBal?.amount}
+          />
+
+          {/* promo banner */}
+          <div className="mt-3 flex items-center justify-between rounded-2xl
+                          border border-white/[0.05] bg-[#0b1220] px-4 py-3">
+            <div>
+              <p className="text-[13px] font-semibold text-[#c0d4ff]">Cyclos Hryvnia</p>
+              <p className="text-[12px] text-[#2e4268]">{promoSub}</p>
+            </div>
+            <div className="glow-blue flex h-10 w-10 items-center justify-center rounded-full
+                            bg-[radial-gradient(circle_at_35%_35%,#6b8fff,#2441a8)]">
+              <span className="text-[17px] font-bold text-white">₴</span>
             </div>
           </div>
 
-          <div className="mt-4 flex gap-2 border-b border-white/[0.06] pb-4">
-            {(["assets", "activity", "market"] as const).map((item) => (
-              <Button
-                className={`min-h-10 rounded-xl px-4 py-2 text-sm ${
-                  tab === item
-                    ? ""
-                    : "border-transparent bg-transparent text-gray-500 hover:bg-white/[0.04] hover:text-gray-300"
-                }`}
-                key={item}
-                onClick={() => setTab(item)}
-                size="sm"
-              type="button"
-              variant={tab === item ? "primary" : "ghost"}
-            >
-                {item === "assets"
-                  ? t("assets")
-                  : item === "activity"
-                    ? t("activity")
-                    : t("market")}
-              </Button>
+          {/* tabs */}
+          <div className="mt-3 flex gap-1 rounded-2xl border border-white/[0.05]
+                          bg-[#0a1220] p-1">
+            {tabs.map(({ key, label }) => (
+              <button
+                key={key} type="button"
+                onClick={() => setTab(key)}
+                className={`flex-1 rounded-xl py-[9px] text-[13px] font-semibold transition-colors
+                  ${tab === key
+                    ? "bg-[#152045] text-accent-400"
+                    : "text-[#3a4f6e] hover:text-[#7a8faa]"}`}
+              >
+                {label}
+              </button>
             ))}
           </div>
         </header>
 
+        {/* ── Content ── */}
         <section
-          aria-busy={tab === "assets" ? balanceLoading : transactionLoading}
-          className="px-4 pt-4"
+          aria-busy={tab === "assets" ? balLoading : txLoading}
+          className="px-4 pt-3"
         >
-          {tab === "market" ? <MarketCharts /> : null}
+          {/* market */}
+          {tab === "market" && <MarketCharts />}
 
-          {tab === "assets" ? (
-            <div className="space-y-3">
-              {balanceLoading && balances.length > 0 ? (
-                <p
-                  className="inline-flex items-center gap-2 text-xs text-gray-500"
-                  role="status"
-                >
+          {/* assets */}
+          {tab === "assets" && (
+            <div>
+              {balLoading && balances.length > 0 && (
+                <p className="mb-2 inline-flex items-center gap-2 text-xs text-[#3a4f6e]" role="status">
                   <LoadingSpinner className="h-3 w-3" />
                   <span>{common("refreshing")}</span>
                 </p>
-              ) : null}
-
-              {isInitialBalanceLoad ? <RowSkeleton /> : null}
-
-              {balanceError ? (
-                <div
-                  className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-100"
-                  role="alert"
-                >
+              )}
+              {initBal && <RowSkeleton />}
+              {balErr && (
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
                   <p>{t("loadError")}</p>
-                  <Button
-                    className="mt-3 border-red-400/40 text-red-50 hover:bg-red-500/20"
-                    onClick={() => void refetchBalances()}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
+                  <Button className="mt-3 border-red-400/40 text-red-50 hover:bg-red-500/20"
+                    onClick={() => void refetchBal()} size="sm" type="button" variant="ghost">
                     {common("retry")}
                   </Button>
                 </div>
-              ) : null}
-
-              {!balanceLoading && !balanceError && balances.length === 0 ? (
-                <div className="cy-card p-8 text-center text-sm leading-6 text-gray-500">
+              )}
+              {!balLoading && !balErr && balances.length === 0 && (
+                <div className="rounded-2xl border border-white/[0.05] bg-white/[0.02]
+                                p-8 text-center text-sm text-[#3a4f6e]">
                   {t("emptyAssets")}
                 </div>
-              ) : null}
-
-              {!isInitialBalanceLoad && balances.length > 0 ? (
-                <TokenList balances={balances} />
-              ) : null}
+              )}
+              {!initBal && balances.length > 0 && <TokenList balances={balances} />}
             </div>
-          ) : tab === "activity" ? (
-            <div className="space-y-3">
-              {transactionLoading && transactions.length > 0 ? (
-                <p
-                  className="inline-flex items-center gap-2 text-xs text-gray-500"
-                  role="status"
-                >
+          )}
+
+          {/* activity */}
+          {tab === "activity" && (
+            <div>
+              {txLoading && transactions.length > 0 && (
+                <p className="mb-2 inline-flex items-center gap-2 text-xs text-[#3a4f6e]" role="status">
                   <LoadingSpinner className="h-3 w-3" />
                   <span>{common("refreshing")}</span>
                 </p>
-              ) : null}
-
-              {isInitialTransactionLoad ? <RowSkeleton count={3} /> : null}
-
-              {transactionError ? (
-                <div
-                  className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm leading-6 text-red-100"
-                  role="alert"
-                >
+              )}
+              {initTx && <RowSkeleton count={3} />}
+              {txErr && (
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100" role="alert">
                   <p>{historyT("loadError")}</p>
-                  <Button
-                    className="mt-3 border-red-400/40 text-red-50 hover:bg-red-500/20"
-                    onClick={() => void refetchTransactions()}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
+                  <Button className="mt-3 border-red-400/40 text-red-50 hover:bg-red-500/20"
+                    onClick={() => void refetchTx()} size="sm" type="button" variant="ghost">
                     {common("retry")}
                   </Button>
                 </div>
-              ) : null}
-
-              {!transactionLoading &&
-              !transactionError &&
-              transactions.length === 0 ? (
-                <div className="cy-card p-8 text-center text-sm leading-6 text-gray-500">
+              )}
+              {!txLoading && !txErr && transactions.length === 0 && (
+                <div className="rounded-2xl border border-white/[0.05] bg-white/[0.02]
+                                p-8 text-center text-sm text-[#3a4f6e]">
                   {historyT("empty")}
                 </div>
-              ) : null}
-
-              {!isInitialTransactionLoad && transactions.length > 0
-                ? transactions.slice(0, 8).map((transaction, index) => (
-                    <TransactionRow
-                      index={index}
-                      key={transaction.id}
-                      transaction={transaction}
-                    />
-                  ))
-                : null}
+              )}
+              {!initTx && transactions.length > 0 &&
+                transactions.slice(0, 10).map((tx, i) => <TxRow key={tx.id} tx={tx} i={i} />)}
             </div>
-          ) : null}
+          )}
         </section>
       </div>
     </main>

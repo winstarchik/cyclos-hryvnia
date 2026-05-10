@@ -7,7 +7,7 @@ import type { Balance, Token } from "@/types";
 const CACHE_DURATION_MS = 30_000;
 
 const FALLBACK_TOKEN_PRICES_USD: Record<string, number> = {
-  SOL: 150,
+  SOL:  150,
   USDC: 1,
   cUAH: 0.024,
   WBTC: 65_000,
@@ -15,62 +15,48 @@ const FALLBACK_TOKEN_PRICES_USD: Record<string, number> = {
 
 let cachedAddress: string | null = null;
 
-/**
- * Balance store state.
- */
+/* ── Store shape ──────────────────────────────────────────── */
+
 export interface BalanceStoreState {
-  balances: Balance[];
-  loading: boolean;
-  error: string | null;
-  lastUpdated: number | null;
-  selectedCurrency: "USD" | "EUR";
+  balances:          Balance[];
+  loading:           boolean;
+  error:             string | null;
+  lastUpdated:       number | null;
+  selectedCurrency:  "USD" | "EUR";
 }
 
-/**
- * Balance store actions.
- */
 export interface BalanceStoreActions {
-  /**
-   * Fetch balances for a given wallet address.
-   */
-  fetchBalances: (address: string) => Promise<void>;
-
-  /**
-   * Get cached balance by token symbol.
-   */
-  getBalance: (symbol: string) => Balance | undefined;
-
-  /**
-   * Get total portfolio value in USD.
-   */
-  getTotalUSD: () => number;
-
-  /**
-   * Clears cached balances.
-   */
-  clearBalances: () => void;
+  fetchBalances:  (address: string) => Promise<void>;
+  getBalance:     (symbol: string)  => Balance | undefined;
+  getTotalUSD:    ()                => number;
+  clearBalances:  ()                => void;
 }
 
 export type BalanceStore = BalanceStoreState & BalanceStoreActions;
 
 const initialState: BalanceStoreState = {
-  balances: [],
-  loading: false,
-  error: null,
-  lastUpdated: null,
+  balances:         [],
+  loading:          false,
+  error:            null,
+  lastUpdated:      null,
   selectedCurrency: "USD",
 };
 
-async function fetchTokenPricesUSD(
-  symbols: string[],
-): Promise<Record<string, number>> {
-  const fallbackPrices = symbols.reduce<Record<string, number>>(
-    (prices, symbol) => {
-      prices[symbol] = FALLBACK_TOKEN_PRICES_USD[symbol] ?? 0;
-      return prices;
-    },
-    {},
-  );
+/* ── Price + change fetcher ───────────────────────────────── */
+
+interface PriceData {
+  prices:  Record<string, number>;
+  changes: Record<string, number>;
+}
+
+async function fetchPriceData(symbols: string[]): Promise<PriceData> {
+  const fallback: PriceData = {
+    prices: symbols.reduce<Record<string, number>>((acc, sym) => {
+      acc[sym] = FALLBACK_TOKEN_PRICES_USD[sym] ?? 0;
+      return acc;
+    }, {}),
+    changes: {},
+  };
 
   try {
     const params = new URLSearchParams({
@@ -80,57 +66,60 @@ async function fetchTokenPricesUSD(
       cache: "no-store",
     });
 
-    if (!response.ok) {
-      return fallbackPrices;
-    }
+    if (!response.ok) return fallback;
 
     const payload = (await response.json()) as {
-      data?: Record<string, number>;
+      data?: { prices?: Record<string, number>; changes?: Record<string, number> };
     };
 
     return {
-      ...fallbackPrices,
-      ...(payload.data ?? {}),
+      prices:  { ...fallback.prices,  ...(payload.data?.prices  ?? {}) },
+      changes: { ...(payload.data?.changes ?? {}) },
     };
   } catch (error) {
     logDevError("[balances] Failed to refresh token prices", error);
-    return fallbackPrices;
+    return fallback;
   }
 }
 
-function createBalance(
-  token: Token,
-  amount: number,
-  pricesUSD: Record<string, number>,
-): Balance {
-  const priceUSD = pricesUSD[token.symbol] ?? FALLBACK_TOKEN_PRICES_USD[token.symbol] ?? 0;
+/* ── Balance builder ──────────────────────────────────────── */
 
-  return {
-    token: {
-      ...token,
-      price: priceUSD,
-    },
+function createBalance(
+  token:     Token,
+  amount:    number,
+  data:      PriceData,
+): Balance {
+  const priceUSD =
+    data.prices[token.symbol] ??
+    FALLBACK_TOKEN_PRICES_USD[token.symbol] ??
+    0;
+
+  const balance: Balance = {
+    token:    { ...token, price: priceUSD },
     amount,
-    // Converts all to USD for display.
     valueUSD: amount * priceUSD,
   };
+
+  // Only attach changePercent when CoinGecko returned a value for this symbol.
+  if (token.symbol in data.changes) {
+    balance.changePercent = data.changes[token.symbol];
+  }
+
+  return balance;
 }
 
 function getTokenByMint(mint: string): Token {
-  const token = Object.values(TOKENS).find((item) => item.address === mint);
-
-  if (token) {
-    return { ...token };
-  }
+  const token = Object.values(TOKENS).find((t) => t.address === mint);
+  if (token) return { ...token };
 
   return {
-    address: mint,
-    symbol: "SPL",
-    name: "SPL Token",
+    address:  mint,
+    symbol:   "SPL",
+    name:     "SPL Token",
     decimals: 0,
-    chain: "solana",
-    logo: null,
-    price: null,
+    chain:    "solana",
+    logo:     null,
+    price:    null,
   };
 }
 
@@ -144,6 +133,16 @@ function getBalanceErrorMessage(error: unknown): string {
   return "We could not refresh balances. Please check your wallet and try again.";
 }
 
+function sortBalances(balances: Balance[]) {
+  return balances.sort((a, b) => {
+    if (a.token.symbol === "cUAH") return -1;
+    if (b.token.symbol === "cUAH") return 1;
+    return b.valueUSD - a.valueUSD;
+  });
+}
+
+/* ── Store ────────────────────────────────────────────────── */
+
 export const useBalanceStore = create<BalanceStore>()((set, get) => ({
   ...initialState,
 
@@ -151,7 +150,7 @@ export const useBalanceStore = create<BalanceStore>()((set, get) => ({
     const { lastUpdated, loading } = get();
     const now = Date.now();
 
-    // Cache duration: 30 seconds.
+    // Respect cache window; guard against concurrent fetches.
     if (
       cachedAddress === address &&
       lastUpdated !== null &&
@@ -160,19 +159,19 @@ export const useBalanceStore = create<BalanceStore>()((set, get) => ({
       return;
     }
 
-    if (loading) {
-      return;
-    }
+    if (loading) return;
 
     set({ loading: true, error: null });
 
     try {
-      // Load Solana RPC code only when balances are fetched so web3.js does
-      // not inflate the first client bundle.
+      // Dynamic import keeps @solana/web3.js out of the initial bundle.
       const [{ PublicKey }, { getAllTokenAccounts, getSOLBalance }] =
-        await Promise.all([import("@solana/web3.js"), import("@/lib/solana")]);
+        await Promise.all([
+          import("@solana/web3.js"),
+          import("@/lib/solana"),
+        ]);
 
-      new PublicKey(address);
+      new PublicKey(address); // validate — throws on bad key
 
       const [solAmount, tokenAccounts] = await Promise.all([
         getSOLBalance(address),
@@ -183,40 +182,31 @@ export const useBalanceStore = create<BalanceStore>()((set, get) => ({
         { ...TOKENS.SOL },
         ...tokenAccounts.map((account) => getTokenByMint(account.mint)),
       ];
-      const pricesUSD = await fetchTokenPricesUSD(
-        tokens.map((token) => token.symbol),
-      );
-      const balances = [
-        createBalance(tokens[0], solAmount, pricesUSD),
-        ...tokenAccounts.map((account, index) =>
-          createBalance(tokens[index + 1], account.balance, pricesUSD),
+
+      const priceData = await fetchPriceData(tokens.map((t) => t.symbol));
+
+      const balances: Balance[] = [
+        createBalance(tokens[0], solAmount, priceData),
+        ...tokenAccounts.map((account, i) =>
+          createBalance(tokens[i + 1], account.balance, priceData),
         ),
       ];
 
       cachedAddress = address;
-      set({
-        balances,
-        loading: false,
-        error: null,
-        lastUpdated: Date.now(),
-      });
+      set({ balances: sortBalances(balances), loading: false, error: null, lastUpdated: Date.now() });
     } catch (error) {
       logDevError("[balances] Failed to refresh balances", error);
-      set({
-        loading: false,
-        error: getBalanceErrorMessage(error),
-      });
+      set({ loading: false, error: getBalanceErrorMessage(error) });
     }
   },
 
   getBalance: (symbol) =>
     get().balances.find(
-      (balance) =>
-        balance.token.symbol.toLowerCase() === symbol.trim().toLowerCase(),
+      (b) => b.token.symbol.toLowerCase() === symbol.trim().toLowerCase(),
     ),
 
   getTotalUSD: () =>
-    get().balances.reduce((total, balance) => total + balance.valueUSD, 0),
+    get().balances.reduce((total, b) => total + b.valueUSD, 0),
 
   clearBalances: () => {
     cachedAddress = null;
@@ -224,7 +214,7 @@ export const useBalanceStore = create<BalanceStore>()((set, get) => ({
   },
 }));
 
-// Auto-clear balances when wallet disconnects.
+// Auto-clear balances on wallet disconnect.
 useWalletStore.subscribe((state, prevState) => {
   if (prevState.connected && !state.connected) {
     useBalanceStore.getState().clearBalances();

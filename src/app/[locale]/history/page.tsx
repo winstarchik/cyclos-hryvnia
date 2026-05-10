@@ -38,6 +38,38 @@ function formatRelativeTime(timestamp: number, locale: string): string {
   return formatter.format(Math.round(diffSeconds / range.divisor), range.unit);
 }
 
+function getDayKey(timestamp: number): string {
+  const date = new Date(timestamp);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function formatDayGroup(timestamp: number, locale: string): string {
+  const intlLocale = locale === "ua" ? "uk-UA" : locale;
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  const date = new Date(timestamp);
+  const key = getDayKey(timestamp);
+
+  if (key === getDayKey(today.getTime())) {
+    if (locale === "ru") return "Сегодня";
+    if (locale === "ua") return "Сьогодні";
+    return "Today";
+  }
+
+  if (key === getDayKey(yesterday.getTime())) {
+    if (locale === "ru") return "Вчера";
+    if (locale === "ua") return "Вчора";
+    return "Yesterday";
+  }
+
+  return new Intl.DateTimeFormat(intlLocale, {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
 function formatAmount(transaction: Transaction): string {
   const prefix = transaction.type === "receive" ? "+" : transaction.type === "swap" ? "" : "-";
   return `${prefix}${transaction.amount.toFixed(4)} ${transaction.token.symbol}`;
@@ -136,6 +168,23 @@ export default function HistoryPage() {
     return transactions.filter((transaction) => transaction.type === filter);
   }, [filter, transactions]);
 
+  const groupedTransactions = useMemo(() => {
+    const groups = new Map<string, Transaction[]>();
+
+    for (const transaction of filteredTransactions) {
+      const key = getDayKey(transaction.timestamp);
+      const group = groups.get(key) ?? [];
+      group.push(transaction);
+      groups.set(key, group);
+    }
+
+    return Array.from(groups.entries()).map(([key, items]) => ({
+      key,
+      label: formatDayGroup(items[0]?.timestamp ?? Date.now(), locale),
+      items,
+    }));
+  }, [filteredTransactions, locale]);
+
   const filters: Array<{ key: HistoryFilter; label: string }> = [
     { key: "all", label: t("filters.all") },
     { key: "send", label: t("filters.send") },
@@ -215,16 +264,25 @@ export default function HistoryPage() {
           </div>
         ) : null}
 
-        {!isInitialLoad && filteredTransactions.length > 0 ? (
-          <div className="animate-fade-in space-y-3">
-            {filteredTransactions.map((transaction, index) => (
-              <TransactionItem
-                index={index}
-                key={transaction.id}
-                locale={locale}
-                transaction={transaction}
-                typeLabel={t(`types.${transaction.type}`)}
-              />
+        {!isInitialLoad && groupedTransactions.length > 0 ? (
+          <div className="animate-fade-in space-y-6">
+            {groupedTransactions.map((group) => (
+              <section key={group.key}>
+                <h2 className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-[#5d7ab8]">
+                  {group.label}
+                </h2>
+                <div className="space-y-3">
+                  {group.items.map((transaction, index) => (
+                    <TransactionItem
+                      index={index}
+                      key={transaction.id}
+                      locale={locale}
+                      transaction={transaction}
+                      typeLabel={t(`types.${transaction.type}`)}
+                    />
+                  ))}
+                </div>
+              </section>
             ))}
           </div>
         ) : null}

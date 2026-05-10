@@ -120,7 +120,20 @@
     "copyAddress": "Скопіювати адресу",
     "onlySend": "Надсилайте на цю адресу лише активи Solana.",
     "onlySendToken": "Надсилайте на цю адресу лише {symbol} у мережі Solana.",
-    "copyError": "Не вдалося скопіювати адресу. Ви можете виділити її вручну."
+    "copyError": "Не вдалося скопіювати адресу. Ви можете виділити її вручну.",
+    "modeAddress": "Адреса",
+    "modeInvoice": "Рахунок",
+    "invoiceAmount": "Сума рахунку",
+    "invoiceAmountPlaceholder": "0.00",
+    "invoiceMemo": "Коментар",
+    "invoiceMemoPlaceholder": "Призначення платежу",
+    "paymentRequest": "Платіжний рахунок",
+    "invoiceReference": "Референс рахунку",
+    "refreshInvoice": "Оновити",
+    "copyPaymentLink": "Скопіювати посилання",
+    "sharePaymentLink": "Поділитися",
+    "invoiceQrHint": "Відскануйте QR у гаманці з підтримкою Solana Pay, щоб оплатити рахунок.",
+    "invoiceUnsupportedToken": "Для QR-рахунку {symbol} потрібен розгорнутий mint у Solana. Зараз показано QR адреси."
   },
   "send": {
     "title": "Надіслати криптовалюту",
@@ -148,7 +161,18 @@
     "button": "Надіслати",
     "processing": "Обробляємо...",
     "transactionSent": "Транзакцію успішно надіслано.",
-    "viewOnExplorer": "Відкрити в Solana Explorer"
+    "viewOnExplorer": "Відкрити в Solana Explorer",
+    "recipient": "Отримувач",
+    "invalidAddress": "Некоректна адреса Solana.",
+    "amountPositive": "Сума має бути більшою за нуль.",
+    "signing": "Очікуємо підпис...",
+    "sending": "Надсилаємо...",
+    "sendButton": "Надіслати",
+    "networkNotice": "Транзакції незворотні. Перевірте адресу отримувача й токен перед підписом.",
+    "successTitle": "Надіслано!",
+    "successTo": "надіслано на",
+    "viewOnSolscan": "Відкрити в Solscan",
+    "sendAnother": "Надіслати ще"
   },
   "nav": {
     "label": "Основна навігація",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
@@ -8,6 +9,7 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 interface MarketToken {
   symbol: string;
   name: string;
+  logo: string;
   priceUSD: number;
   change24h: number;
   color: string;
@@ -29,22 +31,34 @@ function formatPrice(value: number, locale: string): string {
   }).format(value);
 }
 
-function createSparklinePath(points: number[], width: number, height: number): string {
-  if (points.length === 0) return "";
+function createSparklineGeometry(
+  points: number[],
+  width: number,
+  height: number,
+): { lastX: number; lastY: number; path: string } {
+  if (points.length === 0) {
+    return { lastX: 0, lastY: height / 2, path: "" };
+  }
 
   const min = Math.min(...points);
   const max = Math.max(...points);
   const range = max - min || 1;
-  const padding = 6;
+  const padding = 10;
   const innerHeight = height - padding * 2;
+  let lastX = 0;
+  let lastY = height / 2;
 
-  return points
+  const path = points
     .map((point, index) => {
       const x = points.length === 1 ? 0 : (index / (points.length - 1)) * width;
       const y = padding + (1 - (point - min) / range) * innerHeight;
+      lastX = x;
+      lastY = y;
       return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
     })
     .join(" ");
+
+  return { lastX, lastY, path };
 }
 
 function MarketSkeleton() {
@@ -74,21 +88,31 @@ function MarketCard({
   token: MarketToken;
 }) {
   const isPositive = token.change24h >= 0;
-  const path = useMemo(
-    () => createSparklinePath(token.points, 112, 48),
+  const chart = useMemo(
+    () => createSparklineGeometry(token.points, 128, 56),
     [token.points],
   );
+  const chartColor = isPositive ? "#38d8a1" : "#ef6f79";
 
   return (
     <div
-      className="animate-fade-in-up cy-card grid grid-cols-[auto_1fr_auto] items-center gap-3 p-4 transition hover:bg-[#162033]"
+      className="animate-fade-in-up cy-card grid grid-cols-[auto_1fr_auto] items-center gap-3 p-4 transition hover:bg-[#142030]"
       style={{ animationDelay: `${index * 50}ms` }}
     >
       <div
-        className="flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold text-white"
+        className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/[0.04] text-xs font-bold text-white"
         style={{ backgroundColor: token.color }}
       >
-        {token.symbol === "cUAH" ? "₴" : token.symbol.slice(0, 3)}
+        <Image
+          alt={`${token.symbol} logo`}
+          className="rounded-full object-cover"
+          height={40}
+          loading="lazy"
+          sizes="40px"
+          src={token.logo}
+          width={40}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+        />
       </div>
 
       <div className="min-w-0">
@@ -115,29 +139,38 @@ function MarketCard({
 
       <svg
         aria-label={`${token.symbol} 7 day chart`}
-        className="h-12 w-28 overflow-visible"
+        className="h-14 w-32 overflow-visible rounded-xl border border-white/[0.05] bg-[#0a101b]"
         role="img"
-        viewBox="0 0 112 48"
+        viewBox="0 0 128 56"
       >
         <defs>
-          <linearGradient id={`chart-${token.symbol}`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={token.color} stopOpacity="0.35" />
-            <stop offset="100%" stopColor={token.color} stopOpacity="0" />
-          </linearGradient>
+          <clipPath id={`chart-clip-${token.symbol}`}>
+            <rect height="56" rx="10" width="128" x="0" y="0" />
+          </clipPath>
         </defs>
-        <path
-          d={`${path} L 112 48 L 0 48 Z`}
-          fill={`url(#chart-${token.symbol})`}
-          opacity="0.8"
-        />
-        <path
-          d={path}
-          fill="none"
-          stroke={token.color}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2.4"
-        />
+        <g clipPath={`url(#chart-clip-${token.symbol})`}>
+          <path d="M0 18.5H128" stroke="white" strokeOpacity="0.045" />
+          <path d="M0 37.5H128" stroke="white" strokeOpacity="0.045" />
+          <path d="M42.5 0V56" stroke="white" strokeOpacity="0.035" />
+          <path d="M85.5 0V56" stroke="white" strokeOpacity="0.035" />
+          <path
+            d={chart.path}
+            fill="none"
+            stroke={chartColor}
+            strokeLinejoin="miter"
+            strokeLinecap="butt"
+            strokeWidth="1.65"
+            vectorEffect="non-scaling-stroke"
+          />
+          <circle
+            cx={chart.lastX}
+            cy={chart.lastY}
+            fill="#0a101b"
+            r="2.35"
+            stroke={chartColor}
+            strokeWidth="1.4"
+          />
+        </g>
       </svg>
     </div>
   );
@@ -189,7 +222,11 @@ export function MarketCharts() {
         ) : null}
       </div>
 
-      {loading ? <MarketSkeleton /> : null}
+      {loading ? (
+        <div className="scrollbar-dark max-h-[min(56vh,520px)] overflow-y-auto overscroll-contain pr-1 pb-4">
+          <MarketSkeleton />
+        </div>
+      ) : null}
 
       {error ? (
         <div
@@ -210,15 +247,17 @@ export function MarketCharts() {
       ) : null}
 
       {!loading && !error ? (
-        <div className="grid grid-cols-1 gap-3">
-          {tokens.map((token, index) => (
-            <MarketCard
-              index={index}
-              key={token.symbol}
-              locale={locale}
-              token={token}
-            />
-          ))}
+        <div className="scrollbar-dark max-h-[min(56vh,520px)] overflow-y-auto overscroll-contain pr-1 pb-4">
+          <div className="grid grid-cols-1 gap-3">
+            {tokens.map((token, index) => (
+              <MarketCard
+                index={index}
+                key={token.symbol}
+                locale={locale}
+                token={token}
+              />
+            ))}
+          </div>
         </div>
       ) : null}
     </section>

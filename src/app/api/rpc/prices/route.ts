@@ -1,82 +1,90 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PRICE_CACHE_TTL } from "@/constants/tokens";
 
 interface PriceTokenConfig {
   coingeckoId: string | null;
   fallbackUSD: number;
 }
 
-const PRICE_CACHE_TTL_MS = 5 * 60 * 1000;
-
 const PRICE_TOKENS: Record<string, PriceTokenConfig> = {
-  SOL: { coingeckoId: "solana", fallbackUSD: 150 },
-  USDC: { coingeckoId: "usd-coin", fallbackUSD: 1 },
-  USDT: { coingeckoId: "tether", fallbackUSD: 1 },
-  WBTC: { coingeckoId: "bitcoin", fallbackUSD: 65_000 },
-  BTC: { coingeckoId: "bitcoin", fallbackUSD: 65_000 },
-  BNB: { coingeckoId: "binancecoin", fallbackUSD: 600 },
-  cUAH: { coingeckoId: null, fallbackUSD: 0.024 },
+  SOL:  { coingeckoId: "solana",       fallbackUSD: 150      },
+  USDC: { coingeckoId: "usd-coin",     fallbackUSD: 1        },
+  USDT: { coingeckoId: "tether",       fallbackUSD: 1        },
+  WBTC: { coingeckoId: "bitcoin",      fallbackUSD: 65_000   },
+  BTC:  { coingeckoId: "bitcoin",      fallbackUSD: 65_000   },
+  BNB:  { coingeckoId: "binancecoin",  fallbackUSD: 600      },
+  cUAH: { coingeckoId: null,           fallbackUSD: 0.024    },
 };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+  "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
 };
 
-let priceCache:
-  | {
-      expiresAt: number;
-      prices: Record<string, number>;
-    }
-  | null = null;
+/**
+ * In-process cache shared across requests on the same serverless instance.
+ * TTL is driven by PRICE_CACHE_TTL from constants/tokens.ts (60 s).
+ */
+let priceCache: {
+  expiresAt: number;
+  prices:  Record<string, number>;
+  changes: Record<string, number>;
+} | null = null;
+
+export interface PricePayload {
+  /** USD price per token. */
+  prices:  Record<string, number>;
+  /**
+   * 24-hour percentage change from CoinGecko.
+   * Only present for tokens with a coingeckoId.
+   */
+  changes: Record<string, number>;
+}
 
 function jsonResponse(body: unknown, status: number) {
-  return NextResponse.json(body, {
-    status,
-    headers: corsHeaders,
-  });
+  return NextResponse.json(body, { status, headers: corsHeaders });
 }
 
-function fallbackPrices(symbols: string[]): Record<string, number> {
-  return symbols.reduce<Record<string, number>>((prices, symbol) => {
-    const token = PRICE_TOKENS[symbol];
-    if (token) {
-      prices[symbol] = token.fallbackUSD;
-    }
-    return prices;
-  }, {});
+function fallbackPriceData(symbols: string[]): PricePayload {
+  return {
+    prices: symbols.reduce<Record<string, number>>((acc, sym) => {
+      const cfg = PRICE_TOKENS[sym];
+      if (cfg) acc[sym] = cfg.fallbackUSD;
+      return acc;
+    }, {}),
+    changes: {},
+  };
 }
 
-async function fetchLivePrices(): Promise<Record<string, number>> {
+async function fetchLivePriceData(): Promise<PricePayload> {
   const now = Date.now();
 
   if (priceCache && priceCache.expiresAt > now) {
-    return priceCache.prices;
+    return { prices: priceCache.prices, changes: priceCache.changes };
   }
 
+  /* Build id -> symbol[] mapping (multiple symbols can share one CoinGecko id) */
   const idToSymbols = new Map<string, string[]>();
-
-  for (const [symbol, token] of Object.entries(PRICE_TOKENS)) {
-    if (!token.coingeckoId) continue;
-
-    const symbols = idToSymbols.get(token.coingeckoId) ?? [];
-    symbols.push(symbol);
-    idToSymbols.set(token.coingeckoId, symbols);
+  for (const [sym, cfg] of Object.entries(PRICE_TOKENS)) {
+    if (!cfg.coingeckoId) continue;
+    const existing = idToSymbols.get(cfg.coingeckoId) ?? [];
+    existing.push(sym);
+    idToSymbols.set(cfg.coingeckoId, existing);
   }
+
+  const ids = Array.from(idToSymbols.keys()).join(",");
 
   const response = await fetch(
-    `https://api.coingecko.com/api/v3/simple/price?ids=${Array.from(
-      idToSymbols.keys(),
-    ).join(",")}&vs_currencies=usd`,
+    `https://api.coingecko.com/api/v3/simple/price` +
+    `?ids=${ids}` +
+    `&vs_currencies=usd` +
+    `&include_24hr_change=true`,
     {
-      headers: {
-        accept: "application/json",
-      },
-      next: {
-        revalidate: 300,
-      },
+      headers: { accept: "application/json" },
       signal: AbortSignal.timeout(8_000),
+      next: { revalidate: Math.floor(PRICE_CACHE_TTL / 1_000) },
     },
   );
 
@@ -84,67 +92,67 @@ async function fetchLivePrices(): Promise<Record<string, number>> {
     throw new Error(`CoinGecko responded with ${response.status}`);
   }
 
-  const data = (await response.json()) as Record<string, { usd?: number }>;
-  const prices = fallbackPrices(Object.keys(PRICE_TOKENS));
+  const data = (await response.json()) as Record<
+    string,
+    { usd?: number; usd_24h_change?: number }
+  >;
+
+  const prices  = fallbackPriceData(Object.keys(PRICE_TOKENS)).prices;
+  const changes: Record<string, number> = {};
 
   for (const [id, symbols] of idToSymbols.entries()) {
-    const price = data[id]?.usd;
+    const entry = data[id];
+    if (!entry) continue;
 
-    if (typeof price === "number" && Number.isFinite(price) && price > 0) {
-      for (const symbol of symbols) {
-        prices[symbol] = price;
+    const price  = entry.usd;
+    const change = entry.usd_24h_change;
+
+    for (const sym of symbols) {
+      if (typeof price === "number" && Number.isFinite(price) && price > 0) {
+        prices[sym] = price;
+      }
+      if (typeof change === "number" && Number.isFinite(change)) {
+        changes[sym] = change;
       }
     }
   }
 
-  priceCache = {
-    expiresAt: now + PRICE_CACHE_TTL_MS,
-    prices,
-  };
-
-  return prices;
+  priceCache = { expiresAt: now + PRICE_CACHE_TTL, prices, changes };
+  return { prices, changes };
 }
 
 export function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: corsHeaders,
-  });
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
 }
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const symbols = searchParams
-    .get("symbols")
-    ?.split(",")
-    .map((symbol) => symbol.trim())
-    .filter((symbol) => symbol in PRICE_TOKENS) ?? [];
-  const requestedSymbols =
-    symbols.length > 0 ? Array.from(new Set(symbols)) : Object.keys(PRICE_TOKENS);
-  let prices: Record<string, number>;
+  const rawSymbols = searchParams.get("symbols");
+  const requestedSymbols: string[] = rawSymbols
+    ? rawSymbols.split(",").map((s) => s.trim()).filter((s) => s in PRICE_TOKENS)
+    : Object.keys(PRICE_TOKENS);
+  const uniqueSymbols = Array.from(new Set(requestedSymbols));
 
+  let payload: PricePayload;
   try {
-    prices = await fetchLivePrices();
-  } catch (error) {
+    payload = await fetchLivePriceData();
+  } catch (err) {
     if (process.env.NODE_ENV === "development") {
-      console.error("Price fallback is active", error);
+      console.error("[api/rpc/prices] CoinGecko error — using fallback", err);
     }
-    prices = fallbackPrices(Object.keys(PRICE_TOKENS));
+    payload = fallbackPriceData(Object.keys(PRICE_TOKENS));
   }
 
-  const filteredPrices: Record<string, number> = {};
+  const filteredPrices:  Record<string, number> = {};
+  const filteredChanges: Record<string, number> = {};
 
-  for (const symbol of requestedSymbols) {
-    if (symbol in prices) {
-      filteredPrices[symbol] = prices[symbol];
-    }
+  for (const sym of uniqueSymbols) {
+    if (sym in payload.prices)  filteredPrices[sym]  = payload.prices[sym];
+    if (sym in payload.changes) filteredChanges[sym] = payload.changes[sym];
   }
 
   return jsonResponse(
-    {
-      status: "ok",
-      data: filteredPrices,
-    },
+    { status: "ok", data: { prices: filteredPrices, changes: filteredChanges } },
     200,
   );
 }

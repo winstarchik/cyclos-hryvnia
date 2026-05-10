@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
+import type {
+  Connection,
+  Transaction as SolanaTransaction,
+  VersionedTransaction,
+} from "@solana/web3.js";
 import {
   AUTH_CONNECTION,
   WALLET_CONNECTORS,
@@ -9,7 +14,10 @@ import {
   useWeb3AuthConnect,
   useWeb3AuthDisconnect,
 } from "@web3auth/modal/react";
-import { useSolanaWallet } from "@web3auth/modal/react/solana";
+import {
+  useSignAndSendTransaction,
+  useSolanaWallet,
+} from "@web3auth/modal/react/solana";
 import { WEB3AUTH_AUTH_CONNECTION_ID, hasWeb3AuthClientId } from "@/lib/env";
 import {
   INJECTED_SOLANA_WALLET_NOT_FOUND,
@@ -33,6 +41,32 @@ const SOCIAL_AUTH_CONNECTIONS = {
 >;
 
 const WEB3AUTH_CONNECT_TIMEOUT_MS = 30_000;
+
+function openWeb3AuthWalletPicker() {
+  if (typeof window === "undefined") return;
+
+  let attempts = 0;
+  const intervalId = window.setInterval(() => {
+    attempts += 1;
+
+    const arrow = document.getElementById("external-wallet-arrow");
+    const arrowButton = arrow?.closest("button");
+    const textButton = Array.from(document.querySelectorAll("button")).find(
+      (button) => /all wallets|connect wallet/i.test(button.textContent ?? ""),
+    );
+    const walletButton = arrowButton ?? textButton;
+
+    if (walletButton) {
+      walletButton.click();
+      window.clearInterval(intervalId);
+      return;
+    }
+
+    if (attempts >= 50) {
+      window.clearInterval(intervalId);
+    }
+  }, 100);
+}
 
 export type UseWalletResult = Pick<
   WalletStore,
@@ -66,6 +100,10 @@ export type UseWalletResult = Pick<
    * Backwards-compatible alias for components that still use the older name.
    */
   connectWeb3Auth: () => Promise<void>;
+  sendTransaction: (
+    transaction: SolanaTransaction | VersionedTransaction,
+    connection: Connection,
+  ) => Promise<string>;
   disconnect: () => Promise<void>;
   solanaWallet: ReturnType<typeof useSolanaWallet>["solanaWallet"];
   connection: ReturnType<typeof useSolanaWallet>["connection"];
@@ -117,6 +155,7 @@ export function useWallet(): UseWalletResult {
     error: web3AuthDisconnectError,
   } = useWeb3AuthDisconnect();
   const { accounts, solanaWallet, connection } = useSolanaWallet();
+  const { signAndSendTransaction } = useSignAndSendTransaction();
 
   useEffect(() => {
     if (connected || hasAttemptedEmailSessionRestore) {
@@ -232,7 +271,13 @@ export function useWallet(): UseWalletResult {
   );
 
   const connectWallet = useCallback(async () => {
-    await connectWithWeb3Auth(() => connect(), { timeoutMs: null });
+    await connectWithWeb3Auth(
+      async () => {
+        openWeb3AuthWalletPicker();
+        return connect();
+      },
+      { timeoutMs: null },
+    );
   }, [connect, connectWithWeb3Auth]);
 
   const connectSocial = useCallback(
@@ -308,6 +353,44 @@ export function useWallet(): UseWalletResult {
     await disconnectStore();
   }, [disconnectStore, disconnectWeb3Auth, provider, setError]);
 
+  const sendTransaction = useCallback(
+    async (
+      transaction: SolanaTransaction | VersionedTransaction,
+      activeConnection: Connection,
+    ): Promise<string> => {
+      if (provider === "web3auth") {
+        return signAndSendTransaction(
+          transaction as Parameters<typeof signAndSendTransaction>[0],
+        );
+      }
+
+      if (provider === "phantom" || provider === "solflare") {
+        const injectedWallet = getInjectedSolanaWallet();
+
+        if (!injectedWallet) {
+          throw new Error(INJECTED_SOLANA_WALLET_NOT_FOUND);
+        }
+
+        if (injectedWallet.provider.signAndSendTransaction) {
+          const result =
+            await injectedWallet.provider.signAndSendTransaction(transaction);
+          return typeof result === "string" ? result : result.signature;
+        }
+
+        if (injectedWallet.provider.signTransaction) {
+          const signedTransaction =
+            await injectedWallet.provider.signTransaction(transaction);
+          return activeConnection.sendRawTransaction(
+            signedTransaction.serialize(),
+          );
+        }
+      }
+
+      throw new Error("Connect a blockchain wallet before sending.");
+    },
+    [provider, signAndSendTransaction],
+  );
+
   return {
     address,
     email,
@@ -322,6 +405,7 @@ export function useWallet(): UseWalletResult {
     setEmailPasswordSession,
     connectExternalWallet,
     connectWeb3Auth: connectWallet,
+    sendTransaction,
     disconnect,
     clearError,
     solanaWallet,

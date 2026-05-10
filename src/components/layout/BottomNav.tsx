@@ -1,163 +1,110 @@
 "use client";
 
-import type { ComponentType, SVGProps } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import { useWallet } from "@/hooks/useWallet";
 
-type NavIcon = ComponentType<SVGProps<SVGSVGElement>>;
+const APP_ROUTES = ["/wallet", "/history", "/receive", "/send"] as const;
 
-function WalletIcon(props: SVGProps<SVGSVGElement>) {
+/* ── Icons — stroke thickens when active ───────────────────── */
+function HomeIcon({ a }: { a: boolean }) {
+  const w = a ? "2.1" : "1.7";
   return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M4.75 7.75A2.75 2.75 0 0 1 7.5 5h9A2.5 2.5 0 0 1 19 7.5v9A2.5 2.5 0 0 1 16.5 19h-9a2.75 2.75 0 0 1-2.75-2.75v-8.5Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M15.25 12h4v4.25h-4A2.1 2.1 0 0 1 13.15 14v-.05A2.1 2.1 0 0 1 15.25 12Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M7.25 8h8"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.8"
-      />
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9.5Z"
+        stroke="currentColor" strokeWidth={w} strokeLinejoin="round" />
+      <path d="M9 21V12h6v9"
+        stroke="currentColor" strokeWidth={w} strokeLinejoin="round" />
     </svg>
   );
 }
 
-function HistoryIcon(props: SVGProps<SVGSVGElement>) {
+function HistoryIcon({ a }: { a: boolean }) {
+  const w = a ? "2.1" : "1.7";
   return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" {...props}>
-      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M12 7.75v4.65l3 2"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth={w} />
+      <path d="M12 7.75v4.65l3 2"
+        stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function ReceiveIcon(props: SVGProps<SVGSVGElement>) {
+function QRIcon({ a }: { a: boolean }) {
+  const w = a ? "2.1" : "1.7";
   return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M12 4.75v12.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.9"
-      />
-      <path
-        d="m6.75 12.25 5.25 5.25 5.25-5.25"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.9"
-      />
-      <path
-        d="M5 20h14"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.9"
-      />
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth={w} />
+      <rect x="13" y="3" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth={w} />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth={w} />
+      <path d="M13 17h4M17 13v4" stroke="currentColor" strokeLinecap="round" strokeWidth={w} />
     </svg>
   );
 }
 
-function SendIcon(props: SVGProps<SVGSVGElement>) {
+function SendIcon({ a }: { a: boolean }) {
+  const w = a ? "2.1" : "1.7";
   return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" {...props}>
-      <path
-        d="M7 17 17 7"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.9"
-      />
-      <path
-        d="M8 7h9v9"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.9"
-      />
-      <path
-        d="M5 20h14"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="1.9"
-      />
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 12h14M12 5l7 7-7 7"
+        stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
+/* ── Component ─────────────────────────────────────────────── */
 export function BottomNav() {
-  const t = useTranslations("nav");
+  const t        = useTranslations("nav");
   const pathname = usePathname();
-  const locale = useLocale();
-  const { connected } = useWallet();
+  const locale   = useLocale();
 
-  const routes: Array<{
-    href: string;
-    label: string;
-    Icon: NavIcon;
-  }> = [
-    { href: "/wallet", label: t("wallet"), Icon: WalletIcon },
+  const routes = [
+    { href: "/wallet",  label: t("wallet"),  Icon: HomeIcon    },
     { href: "/history", label: t("history"), Icon: HistoryIcon },
-    { href: "/receive", label: t("receive"), Icon: ReceiveIcon },
-    { href: "/send", label: t("send"), Icon: SendIcon },
-  ];
+    { href: "/receive", label: t("receive"), Icon: QRIcon      },
+    { href: "/send",    label: t("send"),    Icon: SendIcon    },
+  ] as const;
 
-  const isAppRoute = routes.some((route) =>
-    pathname === `/${locale}${route.href}` ||
-    pathname.startsWith(`/${locale}${route.href}/`),
+  const isAppRoute = APP_ROUTES.some(
+    r => pathname === `/${locale}${r}` || pathname.startsWith(`/${locale}${r}/`),
   );
 
-  if (!connected || !isAppRoute) return null;
+  if (!isAppRoute) return null;
 
   return (
     <nav
       aria-label={t("label")}
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.06] bg-dark-950/90 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl"
+      className="bottom-nav-bg fixed bottom-0 left-0 right-0 z-50 px-2"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto grid h-16 max-w-[480px] grid-cols-4 gap-1">
+      <div className="mx-auto grid h-16 max-w-[480px] grid-cols-4">
         {routes.map(({ href, label, Icon }) => {
-          const fullHref = `/${locale}${href}`;
-          const isActive =
-            pathname === fullHref || pathname.startsWith(`${fullHref}/`);
+          const full     = `/${locale}${href}`;
+          const isActive = pathname === full || pathname.startsWith(`${full}/`);
 
           return (
             <Link
+              key={href} href={full}
               aria-current={isActive ? "page" : undefined}
               aria-label={label}
               className="min-w-0"
-              href={fullHref}
-              key={href}
             >
               <motion.div
-                className={`flex h-full min-h-16 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] font-medium transition ${
-                  isActive
-                    ? "text-accent-400"
-                    : "text-gray-500 hover:text-gray-300"
-                }`}
-                whileTap={{ scale: 0.94 }}
+                whileTap={{ scale: 0.90 }}
+                className={`flex h-full flex-col items-center justify-center gap-[3px] transition-colors
+                  ${isActive ? "text-accent-400" : "text-[#3a4f6e] hover:text-[#7a8faa]"}`}
               >
+                {/* pill highlight */}
                 <span
-                  className={`flex h-8 w-10 items-center justify-center rounded-2xl transition ${
-                    isActive ? "bg-accent-500/15" : "bg-transparent"
-                  }`}
+                  className={`flex h-8 w-12 items-center justify-center rounded-2xl transition-colors
+                    ${isActive ? "bg-accent-500/15" : "bg-transparent"}`}
                 >
-                  <Icon className="h-[22px] w-[22px]" />
+                  <Icon a={isActive} />
                 </span>
-                <span className="max-w-full truncate px-1">{label}</span>
+                <span className="max-w-full truncate px-0.5 text-[10px] font-medium leading-none">
+                  {label}
+                </span>
               </motion.div>
             </Link>
           );

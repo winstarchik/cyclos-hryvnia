@@ -3,33 +3,33 @@
 
 @layer base {
   :root {
-    --color-dark-950: #080c18;
-    --color-dark-900: #0f1525;
-    --color-dark-800: #1e2b47;
-    --color-dark-700: #2b3f66;
-    --color-dark-600: #3c527a;
-    --color-dark-100: #f0f2ff;
-    --color-dark-50: #f8f9ff;
-    --color-card: #111825;
-    --color-card-hover: #162033;
-    --color-card-border: rgba(255, 255, 255, 0.07);
+    --color-dark-950: #070b14;
+    --color-dark-900: #0d1422;
+    --color-dark-800: #1a2640;
+    --color-dark-700: #243354;
+    --color-dark-600: #344d72;
+    --color-dark-100: #eef1ff;
+    --color-dark-50:  #f6f8ff;
+    --color-card:        #0f1825;
+    --color-card-hover:  #142030;
+    --color-card-border: rgba(255,255,255,0.06);
     --color-accent-100: #dce6ff;
     --color-accent-400: #6b8fff;
     --color-accent-500: #4169e1;
     --color-accent-600: #3154bf;
     --color-accent-700: #233e93;
     --color-success: #22c55e;
-    --color-danger: #ef4444;
+    --color-danger:  #ef4444;
     --color-warning: #f59e0b;
-    --transition-smooth: all 0.3s ease-out;
+    --transition-smooth: all 0.25s ease-out;
 
-    --dark-950: 8 12 24;
-    --dark-900: 15 21 37;
-    --dark-800: 30 43 71;
-    --dark-700: 43 63 102;
-    --dark-600: 60 82 122;
-    --dark-100: 240 242 255;
-    --dark-50: 248 249 255;
+    --dark-950: 7 11 20;
+    --dark-900: 13 20 34;
+    --dark-800: 26 38 64;
+    --dark-700: 36 51 84;
+    --dark-600: 52 77 114;
+    --dark-100: 238 241 255;
+    --dark-50:  246 248 255;
     --accent-100: 220 230 255;
     --accent-400: 107 143 255;
     --accent-500: 65 105 225;
@@ -46,40 +46,22 @@
     @apply bg-dark-950 text-white;
     scrollbar-width: thin;
     scrollbar-color: var(--color-dark-800) transparent;
-    transition: var(--transition-smooth);
   }
 
-  * {
-    @apply transition-colors;
-  }
+  /* Only transiton interactive elements — avoids layout thrash */
+  a, button, [role="button"] { @apply transition-colors; }
 
-  ::selection {
-    background-color: var(--color-accent-500);
-    color: white;
-  }
+  ::selection { background-color: var(--color-accent-500); color: #fff; }
 
   :focus-visible {
     outline: 2px solid var(--color-accent-500);
     outline-offset: 2px;
   }
 
-  ::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--color-dark-800);
-    border-radius: 4px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-dark-700);
-  }
-
+  ::-webkit-scrollbar       { width: 6px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { background: var(--color-dark-800); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-dark-700); }
 }
 
 @layer components {
@@ -92,39 +74,61 @@
   }
 
   .card-base {
-    @apply rounded-2xl border border-white/[0.07] bg-[#111825] backdrop-blur-sm;
-  }
-
-  .btn-primary {
-    @apply bg-gradient-to-r from-accent-500 to-accent-600 font-semibold text-white hover:from-accent-600 hover:to-accent-700;
-  }
-
-  .input-base {
-    @apply rounded-xl border border-white/[0.08] bg-dark-900 px-4 py-3 text-white transition focus:border-accent-500 focus:outline-none;
-  }
-
-  .cy-page {
-    @apply min-h-screen overflow-x-hidden bg-dark-950 text-white;
-  }
-
-  .cy-shell {
-    @apply mx-auto w-full max-w-[480px] px-4;
+    @apply rounded-2xl border border-white/[0.06] bg-[#0f1825] backdrop-blur-sm;
   }
 
   .cy-card {
-    @apply rounded-2xl border border-white/[0.07] bg-[#111825] shadow-2xl shadow-black/20;
+    @apply rounded-2xl border border-white/[0.06] bg-[#0f1825] shadow-xl shadow-black/20;
   }
 
   .cy-card-soft {
-    @apply rounded-3xl border border-white/[0.07] bg-[#111825]/85 shadow-2xl shadow-black/20 backdrop-blur-xl;
+    @apply rounded-3xl border border-white/[0.06] bg-[#0f1825]/85 shadow-2xl shadow-black/20 backdrop-blur-xl;
   }
 
+  .btn-primary {
+    @apply bg-gradient-to-r from-accent-500 to-accent-600 font-semibold text-white
+           hover:from-accent-600 hover:to-accent-700;
+  }
+
+  .input-base {
+    @apply rounded-xl border border-white/[0.08] bg-dark-900 px-4 py-3 text-white
+           transition focus:border-accent-500 focus:outline-none;
+  }
+
+  .cy-page  { @apply min-h-dvh overflow-x-hidden overflow-y-auto bg-dark-950 text-white; }
+  .cy-shell { @apply mx-auto w-full max-w-[480px] px-4; }
+
   .cy-input {
-    @apply min-h-12 w-full rounded-2xl border border-white/[0.08] bg-dark-900 px-4 text-white outline-none transition placeholder:text-gray-600 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply min-h-12 w-full rounded-2xl border border-white/[0.08] bg-dark-900 px-4
+           text-white outline-none transition placeholder:text-gray-600
+           focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20
+           disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .cy-chip {
-    @apply inline-flex min-h-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 text-sm font-semibold text-gray-300 transition hover:border-accent-500/60 hover:text-white;
+    @apply inline-flex min-h-10 items-center justify-center rounded-xl border
+           border-white/[0.08] bg-white/[0.04] px-4 text-sm font-semibold
+           text-gray-300 transition hover:border-accent-500/60 hover:text-white;
+  }
+
+  /* The deep-blue balance card */
+  .balance-card-bg {
+    background: linear-gradient(135deg, #172454 0%, #0f1a3e 55%, #090f24 100%);
+    border: 1px solid rgba(65,105,225,0.28);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(107,143,255,0.10);
+  }
+
+  /* Token row — no hard border, hover bg */
+  .token-card {
+    @apply rounded-2xl px-3 py-3 transition-colors hover:bg-white/[0.04] active:bg-white/[0.06];
+  }
+
+  /* Bottom nav */
+  .bottom-nav-bg {
+    background: rgba(7,11,20,0.93);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    border-top: 1px solid rgba(255,255,255,0.05);
   }
 }
 
@@ -134,109 +138,51 @@
     scrollbar-width: thin;
   }
 
-  .animate-fade-in {
-    animation: cy-fade-in 0.35s ease-out both;
-  }
-
-  .animate-fade-in-up {
-    animation: cy-fade-in-up 0.35s ease-out both;
-  }
-
-  .animate-fade-in-left {
-    animation: cy-fade-in-left 0.25s ease-out both;
-  }
-
-  .animate-scale-in {
-    animation: cy-scale-in 0.35s ease-out both;
-  }
+  .animate-fade-in      { animation: cy-fade-in      0.28s ease-out both; }
+  .animate-fade-in-up   { animation: cy-fade-in-up   0.28s ease-out both; }
+  .animate-fade-in-left { animation: cy-fade-in-left 0.22s ease-out both; }
+  .animate-scale-in     { animation: cy-scale-in     0.28s ease-out both; }
 
   .animate-gradient-shift {
     animation: cy-gradient-shift 8s ease-in-out infinite alternate;
     background:
-      radial-gradient(ellipse 80% 60% at 50% 0%, rgb(var(--accent-500) / 0.22), transparent 70%),
-      radial-gradient(circle at 20% 20%, rgb(var(--accent-400) / 0.12), transparent 32%),
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgb(var(--accent-500)/0.20), transparent 70%),
+      radial-gradient(circle at 20% 20%, rgb(var(--accent-400)/0.10), transparent 32%),
       linear-gradient(180deg, rgb(var(--dark-950)), rgb(var(--dark-900)));
     background-size: 180% 180%;
   }
 
-  .pb-safe {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pt-safe { padding-top:    env(safe-area-inset-top);    }
 
-  .pt-safe {
-    padding-top: env(safe-area-inset-top);
-  }
+  /* Glow helpers for token icons */
+  .glow-blue   { box-shadow: 0 0 20px rgba(65,105,225,0.45);  }
+  .glow-purple { box-shadow: 0 0 20px rgba(153,69,255,0.45);  }
+  .glow-orange { box-shadow: 0 0 20px rgba(247,147,26,0.40);  }
+  .glow-teal   { box-shadow: 0 0 20px rgba(20,241,149,0.35);  }
+
+  /* Price change labels */
+  .percent-pos { color: #22d38c; font-size: .75rem; font-weight: 600; }
+  .percent-neg { color: #ff5c75; font-size: .75rem; font-weight: 600; }
 }
 
-@keyframes cy-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes cy-fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes cy-fade-in-left {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes cy-scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
+@keyframes cy-fade-in      { from { opacity:0 }                        to { opacity:1 } }
+@keyframes cy-fade-in-up   { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
+@keyframes cy-fade-in-left { from { opacity:0; transform:translateX(-14px)} to { opacity:1; transform:translateX(0) } }
+@keyframes cy-scale-in     { from { opacity:0; transform:scale(0.93) }      to { opacity:1; transform:scale(1) } }
 
 @keyframes cy-gradient-shift {
-  0% {
-    background-position: 0% 0%;
-    filter: hue-rotate(0deg);
-  }
-  50% {
-    background-position: 100% 30%;
-    filter: hue-rotate(25deg);
-  }
-  100% {
-    background-position: 50% 100%;
-    filter: hue-rotate(-18deg);
-  }
+  0%   { background-position:0%   0%;   filter:hue-rotate(0deg);   }
+  50%  { background-position:100% 30%;  filter:hue-rotate(20deg);  }
+  100% { background-position:50%  100%; filter:hue-rotate(-15deg); }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+@media (prefers-reduced-motion:reduce) {
+  *,*::before,*::after {
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    scroll-behavior:auto !important;
+    transition-duration:.01ms !important;
   }
-
-  .animate-gradient-shift {
-    animation: none !important;
-    filter: none !important;
-  }
+  .animate-gradient-shift { animation:none !important; filter:none !important; }
 }
