@@ -26,7 +26,7 @@ const MARKET_TOKENS: MarketTokenConfig[] = [
     symbol: "cUAH",
     name: "Cyclos Hryvnia",
     logo: "/icons/tokens/cuah.svg",
-    fallbackPrice: 0.024,
+    fallbackPrice: 0.025,
     fallbackChange24h: 0,
     color: "#4169E1",
   },

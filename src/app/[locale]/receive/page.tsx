@@ -56,9 +56,6 @@ function normalizeAmount(value: string): string {
 
 function canUseTokenInSolanaPay(token: Token): boolean {
   if (token.symbol === "SOL") return true;
-  if (token.symbol === "cUAH" && token.address.includes("Mint111")) {
-    return false;
-  }
 
   return isValidPublicKey(token.address);
 }

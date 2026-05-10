@@ -15,8 +15,7 @@ export const MINT = {
   USDT: "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
   WBTC: "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh",
   WETH: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
-  // cUAH — replace with your deployed SPL mint once live
-  cUAH: "cUAHMint11111111111111111111111111111111111",
+  cUAH: "GN3Njbg9dP13pBX2MvdXurr4cuxzVmsVtKwnhPPymWZh",
 } as const;
 
 // ─── Token Metadata ───────────────────────────────────────────────────────────
@@ -85,7 +84,7 @@ export const KNOWN_TOKENS: Record<string, TokenMeta> = {
   [MINT.cUAH]: {
     symbol: "cUAH",
     name: "Cyclos Hryvnia",
-    decimals: 6,
+    decimals: 4,
     logo: "/icons/tokens/cuah.svg",
     fixedUSD: 0.025,    // 1 UAH ≈ $0.025 USD (update via oracle in v2)
   },

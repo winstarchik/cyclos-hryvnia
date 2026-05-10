@@ -9,7 +9,7 @@ const CACHE_DURATION_MS = 30_000;
 const FALLBACK_TOKEN_PRICES_USD: Record<string, number> = {
   SOL:  150,
   USDC: 1,
-  cUAH: 0.024,
+  cUAH: 0.025,
   WBTC: 65_000,
 };
 
