@@ -10,7 +10,7 @@ import { useWallet } from "@/hooks/useWallet";
 import { hasWeb3AuthClientId } from "@/lib/env";
 import { INJECTED_SOLANA_WALLET_NOT_FOUND } from "@/lib/injectedSolana";
 
-type AuthAction = "email" | "google" | "wallet";
+type AuthAction = "google" | "wallet";
 type AuthMode = "login" | "register";
 
 function getElementText(element: Element) {
@@ -284,7 +284,6 @@ export function WalletLoginPage() {
   const router = useRouter();
   const {
     connectGoogle,
-    connectEmail,
     connectWallet,
     connected,
     loading: walletLoading,
@@ -359,6 +358,12 @@ export function WalletLoginPage() {
     }
   }
 
+  function openEmailFlow() {
+    setLocalErrorKey(null);
+    clearError();
+    router.push(`/${locale}/email-login?mode=${authMode}`);
+  }
+
   return (
     <main className="relative flex min-h-screen overflow-hidden bg-dark-950 px-4 py-8 text-white sm:px-6">
       <div aria-hidden="true" className="animate-gradient-shift absolute inset-0" />
@@ -416,9 +421,9 @@ export function WalletLoginPage() {
                 className="h-12 rounded-2xl text-sm"
                 disabled={isConnecting}
                 fullWidth
-                isLoading={loadingAction === "email"}
+                isLoading={false}
                 loadingText={common("connecting")}
-                onClick={() => runAuthAction("email", connectEmail)}
+                onClick={openEmailFlow}
                 size="md"
                 type="button"
               >

@@ -17,9 +17,8 @@ export function AuthGate({ children }: AuthGateProps) {
   const locale = useLocale();
   const pathname = usePathname();
   const router = useRouter();
-  const { address, connected, loading } = useWallet();
+  const { connected, loading } = useWallet();
   const [mounted, setMounted] = useState(false);
-  const hasBlockchainWallet = connected && Boolean(address);
 
   const isProtectedRoute = useMemo(
     () =>
@@ -35,11 +34,11 @@ export function AuthGate({ children }: AuthGateProps) {
   }, []);
 
   useEffect(() => {
-    if (!mounted || !isProtectedRoute || hasBlockchainWallet || loading) return;
+    if (!mounted || !isProtectedRoute || connected || loading) return;
     router.replace(`/${locale}`);
-  }, [hasBlockchainWallet, isProtectedRoute, loading, locale, mounted, router]);
+  }, [connected, isProtectedRoute, loading, locale, mounted, router]);
 
-  if (isProtectedRoute && (!mounted || loading || !hasBlockchainWallet)) {
+  if (isProtectedRoute && (!mounted || loading || !connected)) {
     return (
       <main className="cy-page flex min-h-screen items-center justify-center px-6 text-center">
         <div className="cy-card-soft w-full max-w-sm p-6">
