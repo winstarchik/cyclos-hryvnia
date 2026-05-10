@@ -18,7 +18,8 @@ import {
 } from "@/lib/env";
 
 const WEB3AUTH_LOCAL_CLIENT_ID = "cyclos-local-web3auth-client-id";
-const DEFAULT_REDIRECT_URL = "http://localhost:3000";
+const DEFAULT_REDIRECT_URL = "http://localhost:3000/ua";
+const SUPPORTED_LOCALES = new Set(["en", "ua", "ru"]);
 
 function getWeb3AuthNetwork() {
   if (WEB3AUTH_NETWORK_ENV === WEB3AUTH_NETWORK.SAPPHIRE_DEVNET) {
@@ -53,7 +54,12 @@ function getRedirectUrl() {
   }
 
   if (typeof window !== "undefined") {
-    return window.location.origin;
+    const [locale] = window.location.pathname.split("/").filter(Boolean);
+    const callbackLocale = SUPPORTED_LOCALES.has(locale) ? locale : "ua";
+
+    // Return to the localized entry page so Web3Auth can process the redirect
+    // before any locale middleware redirect can strip callback state.
+    return `${window.location.origin}/${callbackLocale}`;
   }
 
   return DEFAULT_REDIRECT_URL;
