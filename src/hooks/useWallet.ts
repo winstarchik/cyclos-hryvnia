@@ -19,6 +19,7 @@ import {
   useSolanaWallet,
 } from "@web3auth/modal/react/solana";
 import { WEB3AUTH_AUTH_CONNECTION_ID, hasWeb3AuthClientId } from "@/lib/env";
+import { logDevError } from "@/lib/errors";
 import {
   INJECTED_SOLANA_WALLET_NOT_FOUND,
   getInjectedSolanaWallet,
@@ -213,6 +214,7 @@ export function useWallet(): UseWalletResult {
     const sdkError = web3AuthConnectError ?? web3AuthDisconnectError;
     if (sdkError) {
       setLoading(false);
+      logDevError("[wallet] Web3Auth SDK error", sdkError);
       setError(getWeb3AuthUserMessage(sdkError));
     }
   }, [setError, setLoading, web3AuthConnectError, web3AuthDisconnectError]);
@@ -258,6 +260,7 @@ export function useWallet(): UseWalletResult {
             "Google sign-in is taking longer than expected. Please try again or use email registration.",
           );
         } else {
+          logDevError("[wallet] Web3Auth connect failed", web3AuthError);
           setError(getWeb3AuthUserMessage(web3AuthError));
         }
       } finally {

@@ -20,11 +20,57 @@ export function handleError(error: unknown): AppError {
     );
   }
 
+  const extractedMessage = extractErrorMessage(error);
+  if (extractedMessage) {
+    return new AppError(
+      extractedMessage,
+      "UNKNOWN",
+      "An error occurred. Please try again.",
+    );
+  }
+
   return new AppError(
     "Unknown error",
     "UNKNOWN",
     "An unexpected error occurred. Please try again.",
   );
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (!error || typeof error !== "object") {
+    return typeof error === "string" ? error : "";
+  }
+
+  const record = error as Record<string, unknown>;
+  const directMessage =
+    record.message ??
+    record.errorMessage ??
+    record.error_description ??
+    record.description ??
+    record.reason ??
+    record.code ??
+    record.name;
+
+  if (typeof directMessage === "string" && directMessage.trim()) {
+    return directMessage.trim();
+  }
+
+  if (record.error) {
+    const nested = extractErrorMessage(record.error);
+    if (nested) return nested;
+  }
+
+  if (record.cause) {
+    const nested = extractErrorMessage(record.cause);
+    if (nested) return nested;
+  }
+
+  try {
+    const serialized = JSON.stringify(error);
+    return serialized === "{}" ? "" : serialized;
+  } catch {
+    return "";
+  }
 }
 
 export function logDevError(context: string, error: unknown): void {

@@ -99,8 +99,12 @@ function getWalletErrorMessage(error: unknown): string {
     return "Connection was cancelled. You can try again when you are ready.";
   }
 
-  if (/invalid auth connection|authconnectionconfig|auth connection config|auth connection/i.test(message)) {
-    return "This login method is not enabled in the Web3Auth dashboard. Enable the provider, select the Web platform, and try again.";
+  if (
+    /invalid auth connection|authconnectionconfig|auth connection config|auth connection|failed to login with auth|login with auth|verifier|aggregate verifier|auth.*not.*enabled/i.test(
+      message,
+    )
+  ) {
+    return "Web3Auth login is not fully enabled for this project. In the Web3Auth dashboard, enable Google and Email Passwordless for the Web platform, then try again.";
   }
 
   if (/web3auth_no_provider/i.test(message)) {
@@ -115,8 +119,8 @@ function getWalletErrorMessage(error: unknown): string {
     return "The network is taking longer than expected. Please check your connection and try again.";
   }
 
-  if (/client.?id|whitelist|origin|domain|redirect|forbidden|unauthori|not allowed|access denied|localhost/i.test(message)) {
-    return "Web3Auth is not configured for this app URL. Check the client id and whitelist localhost/domain in the Web3Auth dashboard.";
+  if (/client.?id|whitelist|origin|domain|redirect|forbidden|unauthori|not allowed|access denied|localhost|validate redirect/i.test(message)) {
+    return "Web3Auth is not configured for this app URL. Add http://localhost:3000 and https://cyclos-hryvnia.vercel.app to the Web3Auth dashboard domain whitelist.";
   }
 
   if (process.env.NODE_ENV === "development" && message) {
