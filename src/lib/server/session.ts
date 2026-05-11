@@ -5,8 +5,10 @@ import type { AuthUser } from "@/lib/server/authInput";
 
 export const SESSION_COOKIE_NAME = "cyclos_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
+const SESSION_VERSION = 2;
 
 interface SessionPayload {
+  ver: typeof SESSION_VERSION;
   sub: string;
   email: string;
   iat: number;
@@ -22,6 +24,7 @@ function signPayload(payload: string) {
 export function createSessionToken(user: AuthUser) {
   const now = Math.floor(Date.now() / 1000);
   const payload: SessionPayload = {
+    ver: SESSION_VERSION,
     sub: user.id,
     email: user.email,
     iat: now,
@@ -56,7 +59,12 @@ export function verifySessionToken(token: string | undefined) {
       Buffer.from(encodedPayload, "base64url").toString("utf8"),
     ) as SessionPayload;
 
-    if (!payload.sub || !payload.email || payload.exp < Math.floor(Date.now() / 1000)) {
+    if (
+      payload.ver !== SESSION_VERSION ||
+      !payload.sub ||
+      !payload.email ||
+      payload.exp < Math.floor(Date.now() / 1000)
+    ) {
       return null;
     }
 

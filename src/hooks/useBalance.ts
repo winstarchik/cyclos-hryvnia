@@ -24,6 +24,7 @@ import { useWallet } from "./useWallet";
 import type { Balance } from "@/types";
 import {
   KNOWN_TOKENS,
+  MINT,
   COINGECKO_IDS,
   COINGECKO_ID_TO_KEY,
   PRICE_CACHE_TTL,
@@ -223,6 +224,12 @@ export function useBalance(): UseBalanceResult {
         if (!meta) continue; // unknown token — skip for now
 
         results.push(buildBalance(meta, mint, uiAmount, prices));
+      }
+
+      const cuahMeta = KNOWN_TOKENS[MINT.cUAH];
+      const hasCuah = results.some((item) => item.token.symbol === "cUAH");
+      if (cuahMeta && !hasCuah) {
+        results.push(buildBalance(cuahMeta, MINT.cUAH, 0, prices));
       }
 
       // ── 4. Sort: cUAH first, then by USD value desc ──────────────────────

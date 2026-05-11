@@ -25,6 +25,10 @@ import {
   WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID,
   hasWeb3AuthClientId,
 } from "@/lib/env";
+import {
+  fetchEncryptedCyclosWallet,
+  keypairFromSecretKeyBase64,
+} from "@/lib/clientWallet";
 import { logDevError } from "@/lib/errors";
 import {
   INJECTED_SOLANA_WALLET_NOT_FOUND,
@@ -93,6 +97,7 @@ export type UseWalletResult = Pick<
   | "connected"
   | "provider"
   | "connectorName"
+  | "walletLocked"
   | "loading"
   | "error"
   | "clearError"
@@ -110,7 +115,12 @@ export type UseWalletResult = Pick<
   ) => Promise<void>;
   connectEmail: (loginHint?: string) => Promise<void>;
   connectGoogle: () => Promise<void>;
-  setEmailPasswordSession: (email: string) => void;
+  setEmailPasswordSession: (email: string, address?: string | null) => void;
+  setEmailWalletSession: (
+    email: string,
+    address: string,
+    secretKeyBase64: string,
+  ) => void;
   /**
    * Connects an installed Solana wallet such as Phantom or Solflare.
    */
@@ -145,6 +155,10 @@ export type UseWalletResult = Pick<
 export function useWallet(): UseWalletResult {
   const address = useWalletStore((state) => state.address);
   const email = useWalletStore((state) => state.email);
+  const emailWalletSecretKey = useWalletStore(
+    (state) => state.emailWalletSecretKey,
+  );
+  const walletLocked = useWalletStore((state) => state.walletLocked);
   const connected = useWalletStore((state) => state.connected);
   const provider = useWalletStore((state) => state.provider);
   const connectorName = useWalletStore((state) => state.connectorName);
@@ -153,6 +167,9 @@ export function useWallet(): UseWalletResult {
   const setWeb3AuthSession = useWalletStore((state) => state.setWeb3AuthSession);
   const setEmailPasswordSession = useWalletStore(
     (state) => state.setEmailPasswordSession,
+  );
+  const setEmailWalletSession = useWalletStore(
+    (state) => state.setEmailWalletSession,
   );
   const setInjectedWalletSession = useWalletStore(
     (state) => state.setInjectedWalletSession,
@@ -201,7 +218,8 @@ export function useWallet(): UseWalletResult {
         const sessionEmail = payload.data?.user?.email;
 
         if (isMounted && sessionEmail) {
-          setEmailPasswordSession(sessionEmail);
+          const wallet = await fetchEncryptedCyclosWallet().catch(() => null);
+          setEmailPasswordSession(sessionEmail, wallet?.publicKey ?? null);
         }
       } catch {
         // A missing/expired session is not an app error; keep the user logged out.
@@ -403,6 +421,27 @@ export function useWallet(): UseWalletResult {
         );
       }
 
+      if (provider === "email") {
+        if (!emailWalletSecretKey) {
+          throw new Error(
+            "Unlock your Cyclos wallet by signing in with email again before sending.",
+          );
+        }
+
+        const keypair = keypairFromSecretKeyBase64(emailWalletSecretKey);
+
+        if ("version" in transaction) {
+          transaction.sign([keypair]);
+        } else {
+          transaction.sign(keypair);
+        }
+
+        return activeConnection.sendRawTransaction(transaction.serialize(), {
+          maxRetries: 3,
+          skipPreflight: false,
+        });
+      }
+
       if (provider === "phantom" || provider === "solflare") {
         const injectedWallet = getInjectedSolanaWallet();
 
@@ -427,7 +466,7 @@ export function useWallet(): UseWalletResult {
 
       throw new Error("Connect a blockchain wallet before sending.");
     },
-    [provider, signAndSendTransaction],
+    [emailWalletSecretKey, provider, signAndSendTransaction],
   );
 
   return {
@@ -436,6 +475,7 @@ export function useWallet(): UseWalletResult {
     connected,
     provider,
     connectorName,
+    walletLocked,
     loading: loading || web3AuthDisconnecting,
     error,
     connectWallet,
@@ -443,6 +483,7 @@ export function useWallet(): UseWalletResult {
     connectEmail,
     connectGoogle,
     setEmailPasswordSession,
+    setEmailWalletSession,
     connectExternalWallet,
     connectWeb3Auth: connectWallet,
     sendTransaction,

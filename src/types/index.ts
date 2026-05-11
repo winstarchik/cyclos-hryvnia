@@ -86,7 +86,12 @@ export interface Transaction {
 /**
  * Wallet provider options supported by the app.
  */
-export type WalletProvider = "web3auth" | "phantom" | "solflare" | null;
+export type WalletProvider =
+  | "email"
+  | "web3auth"
+  | "phantom"
+  | "solflare"
+  | null;
 
 /**
  * Zustand wallet store state (connection + selected provider).
@@ -117,4 +122,3 @@ export interface TMAUser {
   /** Client platform as reported by Telegram. */
   platform: string;
 }
-

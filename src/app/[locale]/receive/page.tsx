@@ -1,20 +1,17 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import type * as QRCodeReact from "qrcode.react";
-import { Button } from "@/components/common/Button";
 import { TOKENS } from "@/constants/tokens";
 import { useWallet } from "@/hooks/useWallet";
 import type { Token } from "@/types";
 
 type QRCodeCanvasProps = ComponentProps<typeof QRCodeReact.QRCodeCanvas>;
-type ReceiveMode = "address" | "invoice";
 
 const QRCode = dynamic<QRCodeCanvasProps>(
   () => import("qrcode.react").then((mod) => mod.QRCodeCanvas),
@@ -22,43 +19,17 @@ const QRCode = dynamic<QRCodeCanvasProps>(
     loading: () => (
       <div
         aria-busy="true"
-        className="mx-auto aspect-square w-full max-w-[256px] animate-pulse rounded-xl bg-dark-800"
+        className="aspect-square w-full animate-pulse rounded-2xl bg-dark-800"
         role="status"
-      >
-        <span className="sr-only">Loading QR code</span>
-      </div>
+      />
     ),
     ssr: false,
   },
 );
 
-const RECEIVE_TOKENS: Token[] = [
-  TOKENS.cUAH,
-  TOKENS.SOL,
-  TOKENS.USDC,
-  TOKENS.USDT,
-  TOKENS.WBTC,
-  TOKENS.WETH,
-].map((token) => ({ ...token }));
-
-function isValidPublicKey(value: string): boolean {
-  try {
-    new PublicKey(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function normalizeAmount(value: string): string {
-  return value.trim().replace(",", ".");
-}
-
-function canUseTokenInSolanaPay(token: Token): boolean {
-  if (token.symbol === "SOL") return true;
-
-  return isValidPublicKey(token.address);
-}
+const RECEIVE_TOKENS: Token[] = [TOKENS.cUAH, TOKENS.SOL].map((token) => ({
+  ...token,
+}));
 
 function BackIcon() {
   return (
@@ -93,24 +64,75 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
-function TokenLogo({ token }: { token: Token }) {
+function CopyIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <rect
+        height="13"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        width="10"
+        x="9"
+        y="7"
+      />
+      <path
+        d="M6 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg aria-hidden="true" className="h-6 w-6" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M12 16V4m0 0 4 4m-4-4L8 8"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+      />
+      <path
+        d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
+
+function shortAddress(address: string) {
+  return `${address.slice(0, 8)}...${address.slice(-6)}`;
+}
+
+function TokenLogo({ token, size = 48 }: { token: Token; size?: number }) {
   const [imageFailed, setImageFailed] = useState(false);
+  const isCuah = token.symbol === "cUAH";
 
   return (
-    <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent-500 text-xs font-bold text-white shadow-lg shadow-accent-500/20">
+    <span
+      className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[radial-gradient(circle_at_35%_25%,#78a0ff,#2d49d8_55%,#16205f)] text-sm font-bold text-white shadow-[0_0_26px_rgba(65,105,225,0.45)]"
+      style={{ height: size, width: size }}
+    >
       {token.logo && !imageFailed ? (
         <Image
           alt={`${token.symbol} logo`}
           className="rounded-full object-cover"
-          height={44}
-          loading="lazy"
+          height={size}
           onError={() => setImageFailed(true)}
-          sizes="44px"
+          sizes={`${size}px`}
           src={token.logo}
-          width={44}
+          width={size}
         />
       ) : (
-        token.symbol.slice(0, 4)
+        <span className={isCuah ? "text-3xl" : "text-sm"}>
+          {isCuah ? "₴" : token.symbol.slice(0, 3)}
+        </span>
       )}
     </span>
   );
@@ -119,128 +141,58 @@ function TokenLogo({ token }: { token: Token }) {
 export default function ReceivePage() {
   const t = useTranslations();
   const locale = useLocale();
-  const {
-    address,
-    connectWallet,
-    error: walletError,
-    loading: walletLoading,
-  } = useWallet();
+  const { address, walletLocked } = useWallet();
   const [selectedToken, setSelectedToken] = useState<Token>(TOKENS.cUAH);
   const [tokenPickerOpen, setTokenPickerOpen] = useState(false);
-  const [receiveMode, setReceiveMode] = useState<ReceiveMode>("address");
-  const [invoiceAmount, setInvoiceAmount] = useState("");
-  const [invoiceMemo, setInvoiceMemo] = useState("");
-  const [invoiceReference, setInvoiceReference] = useState("");
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
 
-  useEffect(() => {
-    setInvoiceReference(Keypair.generate().publicKey.toBase58());
-  }, []);
+  const qrValue = address ?? "";
+  const addressLabel = address ? shortAddress(address) : t("receive.connectFirst");
+  const onlySendText = useMemo(
+    () => t("receive.onlySendToken", { symbol: selectedToken.symbol }),
+    [selectedToken.symbol, t],
+  );
 
-  useEffect(() => {
-    if (!copied) return;
-
-    const timeoutId = window.setTimeout(() => setCopied(false), 2000);
-    return () => window.clearTimeout(timeoutId);
-  }, [copied]);
-
-  const normalizedInvoiceAmount = normalizeAmount(invoiceAmount);
-  const parsedInvoiceAmount = Number(normalizedInvoiceAmount);
-  const hasInvoiceAmount = normalizedInvoiceAmount.length > 0;
-  const isInvoiceAmountValid =
-    !hasInvoiceAmount ||
-    (Number.isFinite(parsedInvoiceAmount) && parsedInvoiceAmount > 0);
-  const canEncodeSelectedToken = canUseTokenInSolanaPay(selectedToken);
-
-  const qrValue = useMemo(() => {
-    if (!address) return "";
-
-    if (
-      receiveMode === "address" ||
-      !isInvoiceAmountValid ||
-      !canEncodeSelectedToken
-    ) {
-      return address;
-    }
-
-    const params = new URLSearchParams();
-    if (hasInvoiceAmount) {
-      params.set("amount", normalizedInvoiceAmount);
-    }
-    if (selectedToken.symbol !== "SOL") {
-      params.set("spl-token", selectedToken.address);
-    }
-    if (invoiceReference) {
-      params.set("reference", invoiceReference);
-    }
-    params.set("label", "Cyclos Hryvnia");
-    if (invoiceMemo.trim()) {
-      params.set("message", invoiceMemo.trim());
-    }
-
-    const query = params.toString();
-    return query ? `solana:${address}?${query}` : `solana:${address}`;
-  }, [
-    address,
-    canEncodeSelectedToken,
-    hasInvoiceAmount,
-    invoiceMemo,
-    invoiceReference,
-    isInvoiceAmountValid,
-    normalizedInvoiceAmount,
-    receiveMode,
-    selectedToken.address,
-    selectedToken.symbol,
-  ]);
-
-  function refreshInvoiceReference() {
-    setInvoiceReference(Keypair.generate().publicKey.toBase58());
-    setCopied(false);
-    setCopyError(false);
-  }
-
-  async function copyReceiveValue() {
-    if (!address || !qrValue) return;
+  async function copyAddress() {
+    if (!address) return;
 
     try {
-      await navigator.clipboard.writeText(qrValue);
+      await navigator.clipboard.writeText(address);
       setCopied(true);
       setCopyError(false);
+      window.setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error("Failed to copy receive value", error);
+        console.error("Failed to copy address", error);
       }
       setCopyError(true);
     }
   }
 
-  async function handleShare() {
-    if (!address || !qrValue) return;
+  async function shareAddress() {
+    if (!address) return;
 
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({
-          text: qrValue,
-          title:
-            receiveMode === "invoice"
-              ? t("receive.paymentRequest")
-              : t("receive.walletAddress"),
+          title: `${selectedToken.symbol} ${t("receive.walletAddress")}`,
+          text: address,
         });
         return;
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
-          console.error("Failed to share receive value", error);
+          console.error("Failed to share address", error);
         }
       }
     }
 
-    await copyReceiveValue();
+    await copyAddress();
   }
 
   return (
     <main className="cy-page pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
-      <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col px-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
+      <div className="mx-auto min-h-dvh w-full max-w-[390px] px-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
         <header className="mb-6 flex items-center gap-4">
           <Link
             aria-label={t("common.close")}
@@ -249,74 +201,42 @@ export default function ReceivePage() {
           >
             <BackIcon />
           </Link>
-          <div>
-            <h1 className="text-xl font-bold text-white">
-              {t("receive.title")}
-            </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              {t("receive.subtitle")}
-            </p>
-          </div>
+          <h1 className="text-xl font-semibold text-white">
+            {t("receive.title")}
+          </h1>
         </header>
 
-        <section className="animate-scale-in flex flex-col items-center pb-8 text-center">
-          <div className="mb-4 grid w-full grid-cols-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-1">
-            {(["address", "invoice"] as const).map((mode) => (
-              <button
-                className={`min-h-11 rounded-xl text-sm font-semibold transition ${
-                  receiveMode === mode
-                    ? "bg-accent-500 text-white shadow-lg shadow-accent-500/20"
-                    : "text-gray-400 hover:bg-white/[0.05] hover:text-white"
-                }`}
-                key={mode}
-                onClick={() => setReceiveMode(mode)}
-                type="button"
-              >
-                {t(
-                  `receive.${
-                    mode === "address" ? "modeAddress" : "modeInvoice"
-                  }`,
-                )}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative mb-5 w-full rounded-2xl border border-white/[0.08] bg-white/[0.04] p-3">
-            <span className="sr-only" id="receive-token-label">
-              {t("send.selectToken")}
-            </span>
+        <section className="animate-scale-in space-y-6">
+          <div className="relative rounded-2xl border border-white/[0.07] bg-white/[0.04] p-3 shadow-[0_18px_60px_rgba(0,0,0,0.2)]">
             <button
-              aria-controls="receive-token-list"
               aria-expanded={tokenPickerOpen}
-              aria-labelledby="receive-token-label"
-              className="flex min-h-14 w-full items-center gap-3 rounded-xl px-1 text-left transition hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/60"
+              className="flex min-h-14 w-full items-center gap-3 rounded-xl text-left transition hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/60"
               onClick={() => setTokenPickerOpen((open) => !open)}
               type="button"
             >
               <TokenLogo token={selectedToken} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-white">
+                <span className="block truncate text-base font-semibold text-white">
                   {selectedToken.symbol}
                 </span>
-                <span className="mt-1 block truncate text-xs text-gray-500">
+                <span className="mt-1 block truncate text-sm text-gray-500">
                   {selectedToken.name}
                 </span>
               </span>
-              <span className="text-gray-400">
+              <span className="pr-1 text-gray-400">
                 <ChevronIcon open={tokenPickerOpen} />
               </span>
             </button>
 
             {tokenPickerOpen ? (
               <div
-                className="absolute left-3 right-3 top-[calc(100%-0.25rem)] z-30 overflow-hidden rounded-2xl border border-white/[0.1] bg-dark-900/95 p-1 text-left shadow-2xl shadow-black/40 backdrop-blur-xl"
-                id="receive-token-list"
+                className="absolute left-3 right-3 top-[calc(100%-0.25rem)] z-30 overflow-hidden rounded-2xl border border-white/[0.1] bg-dark-900/95 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl"
                 role="listbox"
               >
                 {RECEIVE_TOKENS.map((token) => (
                   <button
                     aria-selected={token.symbol === selectedToken.symbol}
-                    className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.06] aria-selected:bg-accent-500/15"
+                    className="flex min-h-14 w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.06] aria-selected:bg-accent-500/15"
                     key={token.symbol}
                     onClick={() => {
                       setSelectedToken(token);
@@ -325,7 +245,7 @@ export default function ReceivePage() {
                     role="option"
                     type="button"
                   >
-                    <TokenLogo token={token} />
+                    <TokenLogo token={token} size={40} />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-white">
                         {token.symbol}
@@ -340,176 +260,90 @@ export default function ReceivePage() {
             ) : null}
           </div>
 
-          {receiveMode === "invoice" ? (
-            <div className="mb-5 w-full space-y-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4 text-left">
-              <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-accent-400">
-                  {t("receive.invoiceAmount")}
-                </span>
-                <div className="flex min-h-12 items-center gap-3 rounded-2xl border border-white/[0.08] bg-dark-900 px-4">
-                  <input
-                    className="min-w-0 flex-1 bg-transparent text-base font-semibold text-white outline-none placeholder:text-gray-600"
-                    inputMode="decimal"
-                    onChange={(event) => setInvoiceAmount(event.target.value)}
-                    placeholder={t("receive.invoiceAmountPlaceholder")}
-                    type="text"
-                    value={invoiceAmount}
-                  />
-                  <span className="text-sm font-semibold text-gray-400">
-                    {selectedToken.symbol}
-                  </span>
-                </div>
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.14em] text-accent-400">
-                  {t("receive.invoiceMemo")}
-                </span>
-                <input
-                  className="cy-input"
-                  maxLength={80}
-                  onChange={(event) => setInvoiceMemo(event.target.value)}
-                  placeholder={t("receive.invoiceMemoPlaceholder")}
-                  type="text"
-                  value={invoiceMemo}
-                />
-              </label>
-
-              <div className="rounded-2xl border border-white/[0.07] bg-dark-900/70 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
-                      {t("receive.invoiceReference")}
-                    </p>
-                    <p className="mt-1 truncate font-mono text-xs text-accent-400">
-                      {invoiceReference || "..."}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={refreshInvoiceReference}
-                    size="sm"
-                    type="button"
-                    variant="secondary"
-                  >
-                    {t("receive.refreshInvoice")}
-                  </Button>
-                </div>
-              </div>
-
-              {!isInvoiceAmountValid ? (
-                <p className="text-sm leading-6 text-red-200" role="alert">
-                  {t("send.invalidAmount")}
-                </p>
-              ) : null}
-
-              {!canEncodeSelectedToken ? (
-                <p className="text-sm leading-6 text-amber-200" role="alert">
-                  {t("receive.invoiceUnsupportedToken", {
-                    symbol: selectedToken.symbol,
-                  })}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="mb-6 w-full max-w-[360px] rounded-[1.4rem] border border-white/[0.07] bg-[#111825] p-5 shadow-2xl shadow-black/20">
-            <div className="mx-auto rounded-2xl bg-white p-3">
+          <div className="rounded-[1.65rem] border border-white/[0.07] bg-[#111825] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.32)]">
+            <div className="relative rounded-[1.25rem] bg-white p-3">
               {address ? (
-                <QRCode
-                  className="h-auto w-full max-w-full"
-                  includeMargin
-                  level="H"
-                  size={receiveMode === "invoice" ? 232 : 256}
-                  title={t("receive.walletAddress")}
-                  value={qrValue}
-                />
+                <>
+                  <QRCode
+                    className="h-auto w-full max-w-full"
+                    includeMargin={false}
+                    level="H"
+                    size={260}
+                    title={t("receive.walletAddress")}
+                    value={qrValue}
+                  />
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-[76px] w-[76px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[7px] border-white bg-white shadow-lg">
+                    <TokenLogo token={selectedToken} size={62} />
+                  </span>
+                </>
               ) : (
-                <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-dark-900 p-6 text-sm leading-6 text-gray-400">
+                <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-dark-900 p-6 text-center text-sm leading-6 text-gray-400">
                   {t("receive.connectFirst")}
                 </div>
               )}
             </div>
           </div>
 
-          <div className="mb-4 w-full rounded-2xl border border-white/[0.07] bg-white/[0.04] p-4 text-left">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
-              {receiveMode === "invoice"
-                ? t("receive.paymentRequest")
-                : t("receive.walletAddress")}
+          <div>
+            <p className="mb-3 text-sm font-medium text-gray-400">
+              {t("receive.walletAddress")}
             </p>
-            <p className="select-all break-all font-mono text-sm leading-6 text-accent-400">
-              {address ? qrValue : t("receive.connectFirst")}
-            </p>
+            <div className="flex min-h-16 items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.04] px-4">
+              <p className="min-w-0 flex-1 select-all truncate font-mono text-base font-semibold text-white">
+                {addressLabel}
+              </p>
+              <button
+                aria-label={t("receive.copyAddress")}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-gray-300 transition hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
+                disabled={!address}
+                onClick={copyAddress}
+                type="button"
+              >
+                <CopyIcon />
+              </button>
+            </div>
           </div>
 
-          <div className="grid w-full grid-cols-2 gap-3">
-            <Button
-              aria-live="polite"
-              disabled={!address}
-              fullWidth
-              onClick={copyReceiveValue}
-              size="md"
-              type="button"
-              variant={copied ? "success" : "primary"}
-            >
-              {copied
-                ? `✓ ${t("common.copied")}`
-                : receiveMode === "invoice"
-                  ? t("receive.copyPaymentLink")
-                  : t("receive.copyAddress")}
-            </Button>
-            <Button
-              disabled={!address}
-              fullWidth
-              onClick={handleShare}
-              size="md"
-              type="button"
-              variant="secondary"
-            >
-              {receiveMode === "invoice"
-                ? t("receive.sharePaymentLink")
-                : t("receive.shareAddress")}
-            </Button>
-          </div>
-
-          <p className="mt-5 text-xs leading-5 text-gray-500">
-            {receiveMode === "invoice"
-              ? t("receive.invoiceQrHint")
-              : t("receive.onlySendToken", { symbol: selectedToken.symbol })}
+          <p className="text-center text-sm leading-6 text-gray-400">
+            {onlySendText}
           </p>
 
-          {!address ? (
-            <Button
-              className="mt-4 max-w-[220px]"
-              disabled={walletLoading}
-              fullWidth
-              isLoading={walletLoading}
-              onClick={() => void connectWallet()}
-              size="md"
-              type="button"
-              variant="primary"
-            >
-              {t("send.connectWalletAction")}
-            </Button>
-          ) : null}
-
-          {!address && walletError ? (
-            <p
-              className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-100"
-              role="alert"
-            >
-              {walletError}
+          {walletLocked ? (
+            <p className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-100">
+              Sign in again to unlock sending from this Cyclos wallet.
             </p>
           ) : null}
 
           {copyError ? (
             <p
-              className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-100"
+              className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-100"
               role="alert"
             >
               {t("receive.copyError")}
             </p>
           ) : null}
+
+          {address ? (
+            <button
+              className="group flex min-h-16 w-full items-center gap-5 rounded-2xl border border-accent-500/50 bg-dark-900/60 p-2 text-white shadow-[0_0_30px_rgba(59,111,255,0.12)] transition hover:border-accent-400 hover:bg-dark-800/70"
+              onClick={shareAddress}
+              type="button"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-500 text-white shadow-[0_12px_34px_rgba(59,111,255,0.45)] transition group-hover:bg-accent-400">
+                <ShareIcon />
+              </span>
+              <span className="flex-1 pr-10 text-center text-base font-semibold">
+                {copied ? t("common.copied") : t("receive.shareAddress")}
+              </span>
+            </button>
+          ) : (
+            <Link
+              className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-accent-500 to-accent-600 px-6 py-3 text-base font-semibold text-white transition hover:from-accent-600 hover:to-accent-700"
+              href={`/${locale}/email-login?mode=login`}
+            >
+              {t("onboarding.login")}
+            </Link>
+          )}
         </section>
       </div>
     </main>

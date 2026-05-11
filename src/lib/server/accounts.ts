@@ -13,6 +13,16 @@ export interface AccountUser extends AuthUser {
   createdAt: string;
 }
 
+export interface EncryptedWalletRecord {
+  version: 1;
+  publicKey: string;
+  cipherText: string;
+  iv: string;
+  salt: string;
+  kdf: "PBKDF2-SHA256";
+  iterations: number;
+}
+
 interface AccountRow extends QueryResultRow {
   id: string;
   email: string;
@@ -20,10 +30,12 @@ interface AccountRow extends QueryResultRow {
   password_salt: string;
   password_updated_at: Date | string;
   created_at: Date | string;
+  wallet_public_key?: string | null;
+  wallet_encrypted_json?: EncryptedWalletRecord | string | null;
 }
 
 interface LocalAccountFile {
-  users: AccountUser[];
+  users: Array<AccountUser & { wallet?: EncryptedWalletRecord | null }>;
 }
 
 const LOCAL_STORE_PATH = path.join(process.cwd(), ".data", "cyclos-users.json");
@@ -77,9 +89,17 @@ async function ensureSchema() {
       password_hash TEXT NOT NULL,
       password_salt TEXT NOT NULL,
       password_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      wallet_public_key TEXT,
+      wallet_encrypted_json JSONB,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE cyclos_users
+      ADD COLUMN IF NOT EXISTS wallet_public_key TEXT;
+
+    ALTER TABLE cyclos_users
+      ADD COLUMN IF NOT EXISTS wallet_encrypted_json JSONB;
   `).then(() => undefined);
 
   await schemaReady;
@@ -118,6 +138,77 @@ export async function findUserByEmail(email: string) {
   );
 
   return result.rows[0] ? rowToUser(result.rows[0]) : null;
+}
+
+function parseWalletRecord(value: AccountRow["wallet_encrypted_json"]) {
+  if (!value) return null;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as EncryptedWalletRecord;
+    } catch {
+      return null;
+    }
+  }
+  return value;
+}
+
+export async function getUserEncryptedWallet(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (shouldUseLocalStore()) {
+    const data = await readLocalStore();
+    const user = data.users.find((item) => item.email === normalizedEmail);
+    return user?.wallet ?? null;
+  }
+
+  await ensureSchema();
+  const result = await getPool().query<AccountRow>(
+    `SELECT wallet_public_key, wallet_encrypted_json
+     FROM cyclos_users
+     WHERE email = $1
+     LIMIT 1`,
+    [normalizedEmail],
+  );
+
+  const wallet = parseWalletRecord(result.rows[0]?.wallet_encrypted_json);
+  if (!wallet) return null;
+
+  const publicKey = result.rows[0]?.wallet_public_key;
+  if (publicKey && publicKey !== wallet.publicKey) {
+    return { ...wallet, publicKey };
+  }
+
+  return wallet;
+}
+
+export async function setUserEncryptedWallet(
+  email: string,
+  wallet: EncryptedWalletRecord,
+) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  if (shouldUseLocalStore()) {
+    const data = await readLocalStore();
+    const user = data.users.find((item) => item.email === normalizedEmail);
+    if (!user) return null;
+
+    user.wallet = wallet;
+    await writeLocalStore(data);
+    return wallet;
+  }
+
+  await ensureSchema();
+  const result = await getPool().query<AccountRow>(
+    `UPDATE cyclos_users
+     SET wallet_public_key = $2,
+         wallet_encrypted_json = $3::jsonb,
+         updated_at = NOW()
+     WHERE email = $1
+     RETURNING wallet_encrypted_json`,
+    [normalizedEmail, wallet.publicKey, JSON.stringify(wallet)],
+  );
+
+  return result.rowCount ? wallet : null;
 }
 
 export async function createUserAccount(

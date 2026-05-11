@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { useWallet } from "@/hooks/useWallet";
+import { unlockOrCreateCyclosWallet } from "@/lib/clientWallet";
 
 type AuthMode = "login" | "register";
 type AuthStep = "email" | "code" | "password";
@@ -58,7 +59,7 @@ export default function EmailLoginPage() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setEmailPasswordSession, clearError } = useWallet();
+  const { setEmailWalletSession, clearError } = useWallet();
   const initialMode = useMemo<AuthMode>(
     () => (searchParams.get("mode") === "register" ? "register" : "login"),
     [searchParams],
@@ -205,8 +206,21 @@ export default function EmailLoginPage() {
       }
 
       const authenticatedEmail = payload.data?.user?.email ?? trimmedEmail;
-      setEmailPasswordSession(authenticatedEmail);
+      const wallet = await unlockOrCreateCyclosWallet(
+        authenticatedEmail,
+        password,
+      );
+      setEmailWalletSession(
+        authenticatedEmail,
+        wallet.address,
+        wallet.secretKeyBase64,
+      );
       router.replace(`/${locale}/wallet`);
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Cyclos wallet unlock failed:", error);
+      }
+      setLocalErrorKey("authDependencyError");
     } finally {
       setIsLoading(false);
     }

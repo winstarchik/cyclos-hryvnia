@@ -20,6 +20,8 @@ export type WalletProvider =
 export interface WalletStoreType {
   address: string | null;
   email: string | null;
+  emailWalletSecretKey: string | null;
+  walletLocked: boolean;
   connected: boolean;
   provider: WalletProvider;
   /**
@@ -45,7 +47,15 @@ export interface WalletStoreActions {
   /**
    * Persist an app auth session created by the server email-code flow.
    */
-  setEmailPasswordSession: (email: string) => void;
+  setEmailPasswordSession: (email: string, address?: string | null) => void;
+  /**
+   * Persist an unlocked Cyclos email-wallet session after the vault decrypts.
+   */
+  setEmailWalletSession: (
+    email: string,
+    address: string,
+    secretKeyBase64: string,
+  ) => void;
   /**
    * Persist a Web3Auth session after the React SDK reports a Solana account.
    */
@@ -80,6 +90,8 @@ export type WalletStore = WalletStoreType & WalletStoreActions;
 const initialState: WalletStoreType = {
   address: null,
   email: null,
+  emailWalletSecretKey: null,
+  walletLocked: false,
   connected: false,
   provider: null,
   connectorName: null,
@@ -141,13 +153,29 @@ export function getWeb3AuthUserMessage(error: unknown): string {
 export const useWalletStore = create<WalletStore>()((set) => ({
   ...initialState,
 
-  setEmailPasswordSession: (email) => {
+  setEmailPasswordSession: (email, address = null) => {
     set({
-      address: null,
+      address,
       email,
+      emailWalletSecretKey: null,
+      walletLocked: Boolean(address),
       connected: true,
       provider: "email",
       connectorName: "email-code",
+      loading: false,
+      error: null,
+    });
+  },
+
+  setEmailWalletSession: (email, address, secretKeyBase64) => {
+    set({
+      address,
+      email,
+      emailWalletSecretKey: secretKeyBase64,
+      walletLocked: false,
+      connected: true,
+      provider: "email",
+      connectorName: "email-vault",
       loading: false,
       error: null,
     });
@@ -157,6 +185,8 @@ export const useWalletStore = create<WalletStore>()((set) => ({
     set({
       address,
       email: null,
+      emailWalletSecretKey: null,
+      walletLocked: false,
       connected: true,
       provider: "web3auth",
       connectorName,
@@ -169,6 +199,8 @@ export const useWalletStore = create<WalletStore>()((set) => ({
     set({
       address,
       email: null,
+      emailWalletSecretKey: null,
+      walletLocked: false,
       connected: true,
       provider,
       connectorName: provider,
