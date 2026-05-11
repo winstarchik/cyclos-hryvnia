@@ -138,7 +138,7 @@ function TokenLogo({ token, size = 48 }: { token: Token; size?: number }) {
       {token.logo && !imageFailed ? (
         <Image
           alt={`${token.symbol} logo`}
-          className="rounded-full object-cover"
+          className="h-full w-full rounded-full object-contain"
           height={size}
           onError={() => setImageFailed(true)}
           sizes={`${size}px`}

@@ -105,7 +105,7 @@ function MarketCard({
       >
         <Image
           alt={`${token.symbol} logo`}
-          className="rounded-full object-cover"
+          className="h-full w-full rounded-full object-contain"
           height={40}
           loading="lazy"
           sizes="40px"

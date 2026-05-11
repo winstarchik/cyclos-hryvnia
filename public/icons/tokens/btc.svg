@@ -1,4 +1,20 @@
 <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="80" height="80" rx="40" fill="#F7931A"/>
-  <path d="M49.8 35.8C52.9 34.2 54.6 31.5 53.9 27.8C52.9 22.8 48.7 21.1 43.2 20.4L44.4 14.9L41 14.2L39.8 19.6C38.9 19.4 38 19.2 37.1 19L38.3 13.6L34.9 12.9L33.7 18.4C33 18.2 32.2 18.1 31.5 17.9L26.8 16.9L26 20.5C26 20.5 28.5 21.1 28.5 21.1C29.9 21.4 30.1 22.4 30.1 23.2L26.9 37.8L24.6 48C24.4 48.5 23.9 49.2 22.9 49C23 49 20.4 48.4 20.4 48.4L18.7 52.2L23.1 53.2C23.9 53.4 24.7 53.6 25.5 53.8L24.3 59.4L27.7 60.1L28.9 54.6C29.8 54.9 30.7 55.1 31.6 55.3L30.4 60.8L33.8 61.5L35 56C41.2 57.1 45.9 56.7 48.2 51.1C50 46.6 48.1 44 44.1 42.2C47 41.5 49 39.6 49.8 35.8ZM41.3 49.4C40.2 54 32.5 51.5 30.1 50.9L31.7 43.6C34.1 44.2 42.5 44.6 41.3 49.4ZM42.4 35.7C41.4 39.9 35 37.8 33 37.3L34.5 30.7C36.5 31.1 43.5 31.3 42.4 35.7Z" fill="white"/>
+  <circle cx="40" cy="40" r="40" fill="#F7931A"/>
+  <circle cx="40" cy="40" r="31" fill="url(#btcShade)"/>
+  <text
+    x="40"
+    y="40"
+    fill="white"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="43"
+    font-weight="800"
+    text-anchor="middle"
+    dominant-baseline="central"
+  >&#8383;</text>
+  <defs>
+    <linearGradient id="btcShade" x1="16" x2="62" y1="16" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFA536"/>
+      <stop offset="1" stop-color="#E07B00"/>
+    </linearGradient>
+  </defs>
 </svg>

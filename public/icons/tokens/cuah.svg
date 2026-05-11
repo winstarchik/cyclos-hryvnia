@@ -1,20 +1,28 @@
 <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="80" height="80" rx="40" fill="#070B18"/>
-  <circle cx="40" cy="40" r="32" fill="url(#cuahGlow)"/>
-  <circle cx="40" cy="40" r="25" fill="url(#cuahCore)"/>
-  <path d="M25 33H55" stroke="white" stroke-width="5" stroke-linecap="round"/>
-  <path d="M25 44H55" stroke="white" stroke-width="5" stroke-linecap="round"/>
-  <path d="M43.5 20.5V48.2C43.5 55.2 39 60 31.6 60C28.3 60 25.2 59.1 22.8 57.5L25.4 51.3C27.2 52.4 29.1 53 31.3 53C35 53 37 51.1 37 47.7V20.5H43.5Z" fill="white"/>
+  <circle cx="40" cy="40" r="40" fill="#070B18"/>
+  <circle cx="40" cy="40" r="34" fill="url(#cuahOuter)"/>
+  <circle cx="40" cy="40" r="28" fill="url(#cuahInner)"/>
+  <circle cx="40" cy="40" r="27" stroke="white" stroke-opacity="0.18" stroke-width="1.5"/>
+  <text
+    x="40"
+    y="41"
+    fill="white"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="42"
+    font-weight="800"
+    text-anchor="middle"
+    dominant-baseline="central"
+  >&#8372;</text>
   <defs>
-    <linearGradient id="cuahGlow" x1="14" x2="66" y1="14" y2="66" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4B78FF"/>
-      <stop offset="0.45" stop-color="#2A55FF"/>
-      <stop offset="1" stop-color="#101A70"/>
+    <linearGradient id="cuahOuter" x1="16" x2="64" y1="14" y2="66" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7FA6FF"/>
+      <stop offset="0.45" stop-color="#315DFF"/>
+      <stop offset="1" stop-color="#111A73"/>
     </linearGradient>
-    <linearGradient id="cuahCore" x1="20" x2="58" y1="18" y2="62" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6BA8FF"/>
-      <stop offset="0.46" stop-color="#315DFF"/>
-      <stop offset="1" stop-color="#152287"/>
+    <linearGradient id="cuahInner" x1="24" x2="56" y1="18" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5F8FFF"/>
+      <stop offset="0.5" stop-color="#2F54E8"/>
+      <stop offset="1" stop-color="#172082"/>
     </linearGradient>
   </defs>
 </svg>

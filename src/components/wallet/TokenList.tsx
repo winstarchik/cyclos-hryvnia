@@ -53,7 +53,7 @@ function TokenIcon({ token }: { token: Balance["token"] }) {
       >
         <Image
           alt={`${token.symbol} logo`}
-          className="rounded-full object-cover"
+          className="h-full w-full rounded-full object-contain"
           height={40} width={40}
           loading="lazy"
           sizes="40px"
