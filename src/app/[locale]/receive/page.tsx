@@ -114,6 +114,22 @@ function TokenLogo({ token, size = 48 }: { token: Token; size?: number }) {
   const [imageFailed, setImageFailed] = useState(false);
   const isCuah = token.symbol === "cUAH";
 
+  if (isCuah) {
+    return (
+      <span
+        className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[radial-gradient(circle_at_35%_25%,#78a0ff,#2d49d8_55%,#16205f)] text-white shadow-[0_0_26px_rgba(65,105,225,0.45)]"
+        style={{ height: size, width: size }}
+      >
+        <span
+          className="font-sans font-black leading-none"
+          style={{ fontSize: Math.round(size * 0.58) }}
+        >
+          ₴
+        </span>
+      </span>
+    );
+  }
+
   return (
     <span
       className="relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[radial-gradient(circle_at_35%_25%,#78a0ff,#2d49d8_55%,#16205f)] text-sm font-bold text-white shadow-[0_0_26px_rgba(65,105,225,0.45)]"
@@ -260,20 +276,20 @@ export default function ReceivePage() {
             ) : null}
           </div>
 
-          <div className="rounded-[1.65rem] border border-white/[0.07] bg-[#111825] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.32)]">
-            <div className="relative rounded-[1.25rem] bg-white p-3">
+          <div className="rounded-[1.65rem] border border-white/[0.07] bg-[#111825] p-3 shadow-[0_24px_90px_rgba(0,0,0,0.32)]">
+            <div className="relative overflow-hidden rounded-[1.25rem] bg-white">
               {address ? (
                 <>
                   <QRCode
-                    className="h-auto w-full max-w-full"
+                    className="block aspect-square h-auto w-full max-w-full"
                     includeMargin={false}
                     level="H"
-                    size={260}
+                    size={340}
                     title={t("receive.walletAddress")}
                     value={qrValue}
                   />
-                  <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-[76px] w-[76px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[7px] border-white bg-white shadow-lg">
-                    <TokenLogo token={selectedToken} size={62} />
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-[70px] w-[70px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-[6px] border-white bg-white shadow-lg">
+                    <TokenLogo token={selectedToken} size={58} />
                   </span>
                 </>
               ) : (

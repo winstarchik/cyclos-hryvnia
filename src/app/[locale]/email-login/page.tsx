@@ -29,7 +29,7 @@ function CUAHCoin() {
       aria-hidden="true"
       className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[radial-gradient(circle_at_35%_35%,#6b8fff,#2441a8)] shadow-[0_0_40px_rgba(65,105,225,0.4)]"
     >
-      <span className="text-3xl font-bold text-white">₴</span>
+      <span className="text-3xl font-black text-white">₴</span>
     </div>
   );
 }
@@ -167,8 +167,13 @@ export default function EmailLoginPage() {
       return;
     }
 
-    if (password.length < 8 || password.length > 128) {
+    if (mode === "register" && (password.length < 8 || password.length > 128)) {
       setLocalErrorKey("passwordTooShort");
+      return;
+    }
+
+    if (mode === "login" && password.length === 0) {
+      setLocalErrorKey("invalidCredentials");
       return;
     }
 
@@ -301,14 +306,6 @@ export default function EmailLoginPage() {
                 >
                   {t("sendCode")}
                 </Button>
-                {mode === "login" ? (
-                  <Link
-                    className="block py-2 text-center text-sm font-semibold text-accent-400 transition hover:text-accent-300"
-                    href={`/${locale}/forgot-password`}
-                  >
-                    {t("forgotPassword")}
-                  </Link>
-                ) : null}
               </div>
             ) : null}
 
@@ -409,7 +406,9 @@ export default function EmailLoginPage() {
                       void submitAccountAuth();
                     }
                   }}
-                  placeholder={t("passwordPlaceholder")}
+                  placeholder={
+                    mode === "login" ? t("password") : t("passwordPlaceholder")
+                  }
                   type="password"
                   value={password}
                 />
@@ -459,6 +458,15 @@ export default function EmailLoginPage() {
                 >
                   {mode === "login" ? t("login") : t("finishRegistration")}
                 </Button>
+
+                {mode === "login" ? (
+                  <Link
+                    className="block py-2 text-center text-sm font-semibold text-accent-400 transition hover:text-accent-300"
+                    href={`/${locale}/forgot-password`}
+                  >
+                    {t("forgotPassword")}
+                  </Link>
+                ) : null}
               </div>
             ) : null}
 
