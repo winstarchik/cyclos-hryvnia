@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
@@ -72,18 +73,41 @@ function TxRow({ tx, i }: { tx: Transaction; i: number }) {
   );
 }
 
+function SignOutIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height={16} viewBox="0 0 24 24" width={16}>
+      <path
+        d="M10 7V5.75A2.75 2.75 0 0 1 12.75 3h4.5A2.75 2.75 0 0 1 20 5.75v12.5A2.75 2.75 0 0 1 17.25 21h-4.5A2.75 2.75 0 0 1 10 18.25V17"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M4 12h10m0 0-3.25-3.25M14 12l-3.25 3.25"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
 /* ── Page ──────────────────────────────────────────────────── */
 export default function WalletPage() {
   const t        = useTranslations("wallet");
   const historyT = useTranslations("history");
   const common   = useTranslations("common");
   const locale   = useLocale();
-  const { address } = useWallet();
+  const router   = useRouter();
+  const { address, disconnect, loading: walletLoading } = useWallet();
 
   const { balances, error: balErr, loading: balLoading, refetch: refetchBal, totalValueUSD } = useBalance();
   const { transactions, error: txErr, loading: txLoading, refetch: refetchTx }               = useTransactions();
 
   const [tab, setTab] = useState<WalletTab>("market");
+  const [signingOut, setSigningOut] = useState(false);
 
   const cuahBal = balances.find(b => b.token.symbol.toLowerCase() === "cuah");
   const initBal = balLoading && balances.length === 0;
@@ -99,6 +123,16 @@ export default function WalletPage() {
     { key: "assets",   label: t("assets")   },
     { key: "activity", label: t("activity") },
   ];
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await disconnect();
+      router.replace(`/${locale}`);
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   return (
     <main className="cy-page" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
@@ -118,7 +152,23 @@ export default function WalletPage() {
               </div>
               <span className="text-[14px] font-bold tracking-wider text-white">CYCLOS</span>
             </div>
-            <LanguageSwitcher className="relative z-30 shrink-0" />
+            <div className="relative z-30 flex shrink-0 items-center gap-2">
+              <Button
+                aria-label={t("signOut")}
+                className="min-h-9 rounded-xl border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-gray-300 hover:bg-white/[0.08] hover:text-white"
+                disabled={walletLoading}
+                isLoading={signingOut}
+                loadingText={t("signingOut")}
+                onClick={() => void handleSignOut()}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                <SignOutIcon />
+                <span>{t("signOut")}</span>
+              </Button>
+              <LanguageSwitcher className="shrink-0" />
+            </div>
           </div>
 
           {/* balance card */}

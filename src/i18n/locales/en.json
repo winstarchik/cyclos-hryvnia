@@ -89,6 +89,8 @@
     "cuahReady": "cUAH ready",
     "connectHint": "Connect wallet to view cUAH",
     "connectWalletAction": "Connect wallet",
+    "signOut": "Sign out",
+    "signingOut": "Signing out...",
     "emptyAssets": "No assets yet. Connect a wallet or refresh after your first deposit.",
     "lastUpdated": "Updated {time}",
     "loadError": "We could not refresh balances. Please check your connection and try again."
