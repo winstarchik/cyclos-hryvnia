@@ -1,0 +1,438 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+interface AdminWallet {
+  id: string;
+  email: string;
+  walletPublicKey: string | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+  lastLoginDevice: string | null;
+  lastLoginUserAgent: string | null;
+}
+
+interface AdminWalletsPayload {
+  status: "ok";
+  data: {
+    count: number;
+    fundedCount: number;
+    wallets: AdminWallet[];
+  };
+}
+
+const SECRET_STORAGE_KEY = "cyclos:admin-secret";
+const AUTO_REFRESH_MS = 30_000;
+
+function shortAddress(address: string | null) {
+  if (!address) return "No wallet yet";
+  if (address.length <= 14) return address;
+  return `${address.slice(0, 7)}...${address.slice(-5)}`;
+}
+
+function formatDate(value: string | null) {
+  if (!value) return "Never";
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function csvEscape(value: string | null) {
+  const text = value ?? "";
+  return `"${text.replaceAll('"', '""')}"`;
+}
+
+function buildCsv(wallets: AdminWallet[]) {
+  const header = [
+    "email",
+    "walletPublicKey",
+    "createdAt",
+    "lastLoginAt",
+    "lastLoginDevice",
+    "lastLoginUserAgent",
+  ];
+
+  const rows = wallets.map((wallet) => [
+    wallet.email,
+    wallet.walletPublicKey ?? "",
+    wallet.createdAt,
+    wallet.lastLoginAt ?? "",
+    wallet.lastLoginDevice ?? "",
+    wallet.lastLoginUserAgent ?? "",
+  ]);
+
+  return [header, ...rows]
+    .map((row) => row.map(csvEscape).join(","))
+    .join("\n");
+}
+
+export function AdminDashboard() {
+  const [secretInput, setSecretInput] = useState("");
+  const [adminSecret, setAdminSecret] = useState("");
+  const [wallets, setWallets] = useState<AdminWallet[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [copied, setCopied] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedSecret = window.sessionStorage.getItem(SECRET_STORAGE_KEY) ?? "";
+    if (savedSecret) {
+      setSecretInput(savedSecret);
+      setAdminSecret(savedSecret);
+    }
+  }, []);
+
+  const fetchWallets = useCallback(async () => {
+    if (!adminSecret) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/admin/wallets", {
+        headers: {
+          Authorization: `Bearer ${adminSecret}`,
+        },
+        cache: "no-store",
+      });
+
+      if (response.status === 401) {
+        throw new Error("Wrong admin secret.");
+      }
+
+      if (!response.ok) {
+        throw new Error("Could not load admin data.");
+      }
+
+      const payload = (await response.json()) as AdminWalletsPayload;
+      setWallets(payload.data.wallets);
+      setLastUpdated(new Date().toISOString());
+    } catch (loadError) {
+      setWallets([]);
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Could not load admin data.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [adminSecret]);
+
+  useEffect(() => {
+    void fetchWallets();
+  }, [fetchWallets]);
+
+  useEffect(() => {
+    if (!adminSecret) return;
+
+    const intervalId = window.setInterval(() => {
+      void fetchWallets();
+    }, AUTO_REFRESH_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [adminSecret, fetchWallets]);
+
+  const filteredWallets = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return wallets;
+
+    return wallets.filter((wallet) =>
+      [
+        wallet.email,
+        wallet.walletPublicKey,
+        wallet.lastLoginDevice,
+        wallet.lastLoginUserAgent,
+      ]
+        .filter(Boolean)
+        .some((value) => value!.toLowerCase().includes(normalizedQuery)),
+    );
+  }, [query, wallets]);
+
+  const walletCount = wallets.length;
+  const createdWalletCount = wallets.filter((wallet) => wallet.walletPublicKey).length;
+  const deviceCount = new Set(
+    wallets
+      .map((wallet) => wallet.lastLoginDevice)
+      .filter((device): device is string => Boolean(device)),
+  ).size;
+
+  function handleUnlock() {
+    const normalizedSecret = secretInput.trim();
+    if (!normalizedSecret) {
+      setError("Enter ADMIN_API_SECRET first.");
+      return;
+    }
+
+    window.sessionStorage.setItem(SECRET_STORAGE_KEY, normalizedSecret);
+    setAdminSecret(normalizedSecret);
+  }
+
+  function handleLock() {
+    window.sessionStorage.removeItem(SECRET_STORAGE_KEY);
+    setSecretInput("");
+    setAdminSecret("");
+    setWallets([]);
+    setError("");
+    setLastUpdated(null);
+  }
+
+  async function handleCopy(value: string, label: string) {
+    await navigator.clipboard.writeText(value);
+    setCopied(label);
+    window.setTimeout(() => setCopied(null), 1600);
+  }
+
+  function handleExportCsv() {
+    const csv = buildCsv(filteredWallets);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `cyclos-wallets-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <main className="min-h-dvh bg-dark-950 px-4 py-6 text-white sm:px-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+        <header className="rounded-[2rem] border border-white/[0.07] bg-[#0f1825] p-5 shadow-2xl shadow-black/25 sm:p-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-accent-400">
+                Cyclos Admin
+              </p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+                Wallet Registry
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#7a8faa]">
+                Email, wallet address, last device and login time for airdrops
+                and support checks.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => void fetchWallets()}
+                disabled={!adminSecret || loading}
+                className="min-h-11 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 text-sm font-semibold text-white transition hover:border-accent-500/60 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {loading ? "Refreshing..." : "Refresh"}
+              </button>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={filteredWallets.length === 0}
+                className="min-h-11 rounded-2xl bg-accent-500 px-4 text-sm font-semibold text-white transition hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Export CSV
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {!adminSecret ? (
+          <section className="rounded-[2rem] border border-white/[0.07] bg-[#0f1825] p-5 shadow-xl shadow-black/20 sm:p-6">
+            <label
+              htmlFor="admin-secret"
+              className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5d7ab8]"
+            >
+              ADMIN_API_SECRET
+            </label>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+              <input
+                id="admin-secret"
+                type="password"
+                autoComplete="off"
+                value={secretInput}
+                onChange={(event) => setSecretInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleUnlock();
+                }}
+                placeholder="Paste admin secret"
+                className="min-h-12 flex-1 rounded-2xl border border-white/[0.08] bg-dark-900 px-4 text-white outline-none transition placeholder:text-gray-600 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+              />
+              <button
+                type="button"
+                onClick={handleUnlock}
+                className="min-h-12 rounded-2xl bg-accent-500 px-6 text-sm font-semibold text-white transition hover:bg-accent-600"
+              >
+                Open admin
+              </button>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-[#7a8faa]">
+              The secret stays in this browser tab session. It is never saved in
+              the app code.
+            </p>
+          </section>
+        ) : (
+          <>
+            <section className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-3xl border border-white/[0.07] bg-[#0f1825] p-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#5d7ab8]">
+                  Accounts
+                </p>
+                <p className="mt-2 text-3xl font-bold">{walletCount}</p>
+              </div>
+              <div className="rounded-3xl border border-white/[0.07] bg-[#0f1825] p-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#5d7ab8]">
+                  Wallets
+                </p>
+                <p className="mt-2 text-3xl font-bold">{createdWalletCount}</p>
+              </div>
+              <div className="rounded-3xl border border-white/[0.07] bg-[#0f1825] p-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[#5d7ab8]">
+                  Devices
+                </p>
+                <p className="mt-2 text-3xl font-bold">{deviceCount}</p>
+              </div>
+            </section>
+
+            <section className="rounded-[2rem] border border-white/[0.07] bg-[#0f1825] p-4 shadow-xl shadow-black/20 sm:p-5">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex-1">
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Search email, wallet, device..."
+                    className="min-h-12 w-full rounded-2xl border border-white/[0.08] bg-dark-900 px-4 text-white outline-none transition placeholder:text-gray-600 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-[#7a8faa]">
+                  <span>
+                    Auto-refresh: {AUTO_REFRESH_MS / 1000}s
+                  </span>
+                  <span className="hidden h-1 w-1 rounded-full bg-[#3d5070] sm:block" />
+                  <span>
+                    Updated: {formatDate(lastUpdated)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleLock}
+                    className="ml-auto min-h-9 rounded-xl border border-red-500/25 bg-red-500/10 px-3 font-semibold text-red-200 transition hover:bg-red-500/15 lg:ml-2"
+                  >
+                    Lock
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="mt-4 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                  {error}
+                </div>
+              )}
+
+              {copied && (
+                <div className="mt-4 rounded-2xl border border-green-500/25 bg-green-500/10 px-4 py-3 text-sm text-green-100">
+                  Copied {copied}
+                </div>
+              )}
+
+              <div className="mt-4 overflow-hidden rounded-3xl border border-white/[0.06]">
+                <div className="hidden grid-cols-[1.2fr_1.4fr_1fr_1fr_auto] gap-3 border-b border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-semibold uppercase tracking-widest text-[#5d7ab8] lg:grid">
+                  <span>Email</span>
+                  <span>Wallet</span>
+                  <span>Device</span>
+                  <span>Last login</span>
+                  <span>Actions</span>
+                </div>
+
+                {filteredWallets.length === 0 ? (
+                  <div className="px-4 py-12 text-center text-sm text-[#7a8faa]">
+                    {loading ? "Loading wallets..." : "No wallets found."}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-white/[0.06]">
+                    {filteredWallets.map((wallet) => (
+                      <article
+                        key={wallet.id}
+                        className="grid gap-3 px-4 py-4 text-sm lg:grid-cols-[1.2fr_1.4fr_1fr_1fr_auto] lg:items-center"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-[#5d7ab8] lg:hidden">
+                            Email
+                          </p>
+                          <p className="truncate font-semibold text-white">
+                            {wallet.email}
+                          </p>
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-[#5d7ab8] lg:hidden">
+                            Wallet
+                          </p>
+                          <p className="truncate font-mono text-[13px] text-accent-100">
+                            {shortAddress(wallet.walletPublicKey)}
+                          </p>
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-[#5d7ab8] lg:hidden">
+                            Device
+                          </p>
+                          <p className="truncate text-[#d8e2f5]">
+                            {wallet.lastLoginDevice ?? "Unknown"}
+                          </p>
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold uppercase tracking-widest text-[#5d7ab8] lg:hidden">
+                            Last login
+                          </p>
+                          <p className="text-[#7a8faa]">
+                            {formatDate(wallet.lastLoginAt)}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 lg:justify-end">
+                          <button
+                            type="button"
+                            onClick={() => void handleCopy(wallet.email, "email")}
+                            className="min-h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs font-semibold text-white transition hover:border-accent-500/60"
+                          >
+                            Email
+                          </button>
+                          {wallet.walletPublicKey && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void handleCopy(
+                                    wallet.walletPublicKey!,
+                                    "wallet",
+                                  )
+                                }
+                                className="min-h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs font-semibold text-white transition hover:border-accent-500/60"
+                              >
+                                Copy
+                              </button>
+                              <a
+                                href={`https://solscan.io/account/${wallet.walletPublicKey}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex min-h-9 items-center rounded-xl bg-accent-500 px-3 text-xs font-semibold text-white transition hover:bg-accent-600"
+                              >
+                                Solscan
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}

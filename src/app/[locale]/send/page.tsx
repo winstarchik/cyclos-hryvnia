@@ -82,6 +82,7 @@ const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 const JUPITER_QUOTE_URL = "https://api.jup.ag/swap/v1/quote";
 const JUPITER_SWAP_URL = "https://api.jup.ag/swap/v1/swap";
 const ADDRESS_BOOK_STORAGE_KEY = "cyclos:address-book:v1";
+const CONFIRMATION_TIMEOUT_MS = 3_000;
 
 // ─── Validation helpers ───────────────────────────────────────────────────────
 
@@ -160,6 +161,25 @@ function isConfirmationPending(message: string): boolean {
   return /block height exceeded|signature .*expired|transaction expired|confirmTransaction/i.test(
     message,
   );
+}
+
+function waitForConfirmationWithTimeout<T>(
+  confirmation: Promise<T>,
+  timeoutMs = CONFIRMATION_TIMEOUT_MS,
+) {
+  return new Promise<boolean>((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => resolve(false), timeoutMs);
+
+    confirmation
+      .then(() => {
+        window.clearTimeout(timeoutId);
+        resolve(true);
+      })
+      .catch((error) => {
+        window.clearTimeout(timeoutId);
+        reject(error);
+      });
+  });
 }
 
 function getTokenGradient(symbol: string): string {
@@ -404,6 +424,7 @@ export default function SendPage() {
   const amountValid =
     form.amount === "" ||
     (parsedAmount > 0 && parsedAmount <= maxAmount);
+  const canStartTransaction = status === "idle" || status === "error";
 
   const canSend =
     isValidAddress(form.recipient) &&
@@ -411,7 +432,7 @@ export default function SendPage() {
     parsedAmount <= maxAmount &&
     !!address &&
     !walletLocked &&
-    status === "idle";
+    canStartTransaction;
 
   const canSwap =
     !!selectedBal &&
@@ -422,7 +443,7 @@ export default function SendPage() {
     !!quote &&
     !quoteLoading &&
     toSwapMint(selectedBal.token.address) !== toSwapMint(swapOutputAddress) &&
-    status === "idle";
+    canStartTransaction;
 
   const canSubmit = mode === "send" ? canSend : canSwap;
 
@@ -754,11 +775,18 @@ export default function SendPage() {
       const signature = await sendTransaction(tx, connection);
       setTxSig(signature);
 
-      // Confirm
-      await connection.confirmTransaction(
-        { signature, blockhash, lastValidBlockHeight },
-        "confirmed",
+      const confirmed = await waitForConfirmationWithTimeout(
+        connection.confirmTransaction(
+          { signature, blockhash, lastValidBlockHeight },
+          "confirmed",
+        ),
       );
+
+      if (!confirmed) {
+        setErrMsg(t("confirmationPending"));
+        setStatus("error");
+        return;
+      }
 
       setStatus("confirmed");
     } catch (err: unknown) {
@@ -774,6 +802,7 @@ export default function SendPage() {
     friendlyErrorMessage,
     selectedBal?.token.decimals,
     sendTransaction,
+    t,
   ]);
 
   const handleSwap = useCallback(async () => {
@@ -817,14 +846,22 @@ export default function SendPage() {
       setStatus("sending");
       const signature = await sendTransaction(transaction, connection);
       setTxSig(signature);
-      await connection.confirmTransaction(signature, "confirmed");
+      const confirmed = await waitForConfirmationWithTimeout(
+        connection.confirmTransaction(signature, "confirmed"),
+      );
+
+      if (!confirmed) {
+        setErrMsg(t("confirmationPending"));
+        setStatus("error");
+        return;
+      }
 
       setStatus("confirmed");
     } catch (err: unknown) {
       setErrMsg(friendlyErrorMessage(err));
       setStatus("error");
     }
-  }, [address, canSwap, friendlyErrorMessage, quote, sendTransaction]);
+  }, [address, canSwap, friendlyErrorMessage, quote, sendTransaction, t]);
 
   const handlePrimaryAction = useCallback(async () => {
     if (mode === "swap") {
