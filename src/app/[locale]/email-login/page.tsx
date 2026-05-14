@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
@@ -10,6 +10,7 @@ import { unlockOrCreateCyclosWallet } from "@/lib/clientWallet";
 
 type AuthMode = "login" | "register";
 type AuthStep = "email" | "code" | "password";
+const LAST_EMAIL_STORAGE_KEY = "cyclos:last-email";
 
 interface AuthApiResponse {
   status: "ok" | "error";
@@ -93,6 +94,17 @@ export default function EmailLoginPage() {
           ? t("loginPasswordHint")
           : t("registerPasswordHint");
 
+  useEffect(() => {
+    try {
+      const savedEmail = window.localStorage.getItem(LAST_EMAIL_STORAGE_KEY);
+      if (savedEmail) {
+        setEmail(savedEmail);
+      }
+    } catch {
+      // Remembered email is only a convenience.
+    }
+  }, []);
+
   function switchMode(nextMode: AuthMode) {
     setMode(nextMode);
     setStep("email");
@@ -119,6 +131,11 @@ export default function EmailLoginPage() {
     clearError();
 
     try {
+      try {
+        window.localStorage.setItem(LAST_EMAIL_STORAGE_KEY, trimmedEmail);
+      } catch {
+        // Remembered email is only a convenience.
+      }
       const response = await fetch("/api/auth/email/request-code", {
         body: JSON.stringify({ email: trimmedEmail, mode }),
         credentials: "include",
@@ -211,6 +228,11 @@ export default function EmailLoginPage() {
       }
 
       const authenticatedEmail = payload.data?.user?.email ?? trimmedEmail;
+      try {
+        window.localStorage.setItem(LAST_EMAIL_STORAGE_KEY, authenticatedEmail);
+      } catch {
+        // Remembered email is only a convenience.
+      }
       const wallet = await unlockOrCreateCyclosWallet(
         authenticatedEmail,
         password,

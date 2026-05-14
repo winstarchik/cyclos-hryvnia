@@ -88,6 +88,10 @@ export function getAuthSecret(): string {
   throw new Error("Missing environment variable: AUTH_SECRET");
 }
 
+export function getAdminApiSecret(): string | undefined {
+  return process.env.ADMIN_API_SECRET;
+}
+
 export function getSmtpConfig() {
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT;

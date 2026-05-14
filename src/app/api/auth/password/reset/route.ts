@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidAuthPassword } from "@/lib/server/authInput";
-import { findUserByEmail, updateUserPassword } from "@/lib/server/accounts";
+import {
+  findUserByEmail,
+  recordUserLogin,
+  updateUserPassword,
+} from "@/lib/server/accounts";
 import { hashPassword } from "@/lib/server/password";
 import { verifyPasswordResetToken } from "@/lib/server/resetToken";
 import { attachSessionCookie } from "@/lib/server/session";
@@ -89,6 +93,15 @@ export async function POST(request: NextRequest) {
           email: updatedUser.email,
         },
       },
+    });
+
+    await recordUserLogin(
+      updatedUser.email,
+      request.headers.get("user-agent"),
+    ).catch((error) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Password reset device capture failed:", error);
+      }
     });
 
     return attachSessionCookie(response, updatedUser);

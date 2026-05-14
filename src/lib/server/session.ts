@@ -6,6 +6,7 @@ import type { AuthUser } from "@/lib/server/authInput";
 export const SESSION_COOKIE_NAME = "cyclos_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 const SESSION_VERSION = 2;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 interface SessionPayload {
   ver: typeof SESSION_VERSION;
@@ -81,8 +82,8 @@ export function getSessionFromRequest(request: NextRequest) {
 export function attachSessionCookie(response: NextResponse, user: AuthUser) {
   response.cookies.set(SESSION_COOKIE_NAME, createSessionToken(user), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: IS_PRODUCTION,
+    sameSite: IS_PRODUCTION ? "none" : "lax",
     path: "/",
     maxAge: SESSION_TTL_SECONDS,
   });
@@ -93,8 +94,8 @@ export function attachSessionCookie(response: NextResponse, user: AuthUser) {
 export function clearSessionCookie(response: NextResponse) {
   response.cookies.set(SESSION_COOKIE_NAME, "", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure: IS_PRODUCTION,
+    sameSite: IS_PRODUCTION ? "none" : "lax",
     path: "/",
     maxAge: 0,
   });

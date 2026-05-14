@@ -4,7 +4,11 @@ import {
   isValidAuthPassword,
   normalizeAuthEmail,
 } from "@/lib/server/authInput";
-import { createUserAccount, findUserByEmail } from "@/lib/server/accounts";
+import {
+  createUserAccount,
+  findUserByEmail,
+  recordUserLogin,
+} from "@/lib/server/accounts";
 import { hashPassword } from "@/lib/server/password";
 import {
   clearOtpCookie,
@@ -94,6 +98,14 @@ export async function POST(request: NextRequest) {
 
     const { passwordHash, passwordSalt } = await hashPassword(password);
     const user = await createUserAccount(email, passwordHash, passwordSalt);
+    await recordUserLogin(user.email, request.headers.get("user-agent")).catch(
+      (error) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Registration device capture failed:", error);
+        }
+      },
+    );
+
     const response = NextResponse.json({
       status: "ok",
       data: {

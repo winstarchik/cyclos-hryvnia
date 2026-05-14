@@ -23,6 +23,7 @@ import {
 import { useWallet } from "@/hooks/useWallet";
 import { useBalance } from "@/hooks/useBalance";
 import { TOKENS } from "@/constants/tokens";
+import { unlockOrCreateCyclosWallet } from "@/lib/clientWallet";
 import type { Balance, Token } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -34,6 +35,12 @@ interface FormState {
   tokenAddress: string; // "SOL" or mint address
   recipient: string;
   amount: string;
+}
+
+interface AddressBookEntry {
+  id: string;
+  name: string;
+  address: string;
 }
 
 interface JupiterSwapInfo {
@@ -74,6 +81,7 @@ function getRpc(): string {
 const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
 const JUPITER_QUOTE_URL = "https://api.jup.ag/swap/v1/quote";
 const JUPITER_SWAP_URL = "https://api.jup.ag/swap/v1/swap";
+const ADDRESS_BOOK_STORAGE_KEY = "cyclos:address-book:v1";
 
 // ─── Validation helpers ───────────────────────────────────────────────────────
 
@@ -124,6 +132,34 @@ function base64ToBytes(base64: string): Uint8Array {
   }
 
   return bytes;
+}
+
+function shortAddress(value: string): string {
+  if (value.length <= 12) return value;
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function readErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "";
+  }
+}
+
+function isSolFeeShortage(message: string): boolean {
+  return /insufficient lamports|lamports.*need|need \d+|insufficient funds|attempt to debit/i.test(
+    message,
+  );
+}
+
+function isConfirmationPending(message: string): boolean {
+  return /block height exceeded|signature .*expired|transaction expired|confirmTransaction/i.test(
+    message,
+  );
 }
 
 function getTokenGradient(symbol: string): string {
@@ -229,6 +265,39 @@ function LoaderIcon() {
   );
 }
 
+function FriendlyStatusArt() {
+  return (
+    <div
+      aria-hidden
+      className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent-500/15 text-accent-300 shadow-[0_0_30px_rgba(59,111,255,0.22)]"
+    >
+      <svg width={38} height={38} viewBox="0 0 38 38" fill="none">
+        <circle cx="19" cy="19" r="16" fill="url(#statusGlow)" />
+        <path
+          d="M12 20.5 18.2 25 27 13"
+          stroke="white"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9 29c5.6 3.8 14.3 3.7 20-1"
+          stroke="#7EA2FF"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          opacity="0.75"
+        />
+        <defs>
+          <linearGradient id="statusGlow" x1="8" y1="5" x2="30" y2="34">
+            <stop stopColor="#6B8FFF" />
+            <stop offset="1" stopColor="#2441A8" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  );
+}
+
 // ─── Token selector ───────────────────────────────────────────────────────────
 
 interface TokenOptionProps {
@@ -275,7 +344,13 @@ export default function SendPage() {
   const t        = useTranslations("send");
   const common   = useTranslations("common");
 
-  const { address, sendTransaction } = useWallet();
+  const {
+    address,
+    email,
+    walletLocked,
+    setEmailWalletSession,
+    sendTransaction,
+  } = useWallet();
   const { balances, loading: balLoading } = useBalance();
 
   const [form, setForm] = useState<FormState>({
@@ -295,6 +370,12 @@ export default function SendPage() {
   const [quote, setQuote] = useState<JupiterQuoteResponse | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [unlockPassword, setUnlockPassword] = useState("");
+  const [unlockingWallet, setUnlockingWallet] = useState(false);
+  const [unlockError, setUnlockError] = useState<string | null>(null);
+  const [addressBook, setAddressBook] = useState<AddressBookEntry[]>([]);
+  const [contactName, setContactName] = useState("");
+  const [contactSaved, setContactSaved] = useState(false);
 
   // ── Derived state ──────────────────────────────────────────────────────────
 
@@ -329,11 +410,13 @@ export default function SendPage() {
     parsedAmount > 0 &&
     parsedAmount <= maxAmount &&
     !!address &&
+    !walletLocked &&
     status === "idle";
 
   const canSwap =
     !!selectedBal &&
     !!address &&
+    !walletLocked &&
     parsedAmount > 0 &&
     parsedAmount <= maxAmount &&
     !!quote &&
@@ -342,6 +425,28 @@ export default function SendPage() {
     status === "idle";
 
   const canSubmit = mode === "send" ? canSend : canSwap;
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(ADDRESS_BOOK_STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as AddressBookEntry[];
+      if (Array.isArray(parsed)) {
+        setAddressBook(
+          parsed.filter(
+            (entry) =>
+              typeof entry?.id === "string" &&
+              typeof entry?.name === "string" &&
+              typeof entry?.address === "string" &&
+              isValidAddress(entry.address),
+          ),
+        );
+      }
+    } catch {
+      setAddressBook([]);
+    }
+  }, []);
 
   useEffect(() => {
     if (!selectedBal) return;
@@ -453,6 +558,116 @@ export default function SendPage() {
     swapOutputAddress,
   ]);
 
+  const friendlyErrorMessage = useCallback(
+    (error: unknown) => {
+      const message = readErrorMessage(error);
+
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Cyclos transaction failed:", error);
+      }
+
+      if (/unlock your cyclos wallet|wallet.*locked|secret key/i.test(message)) {
+        return t("unlockRequired");
+      }
+
+      if (isConfirmationPending(message)) {
+        return t("confirmationPending");
+      }
+
+      if (isSolFeeShortage(message)) {
+        return t("solTopUpRequired");
+      }
+
+      if (/simulation failed|transaction simulation failed/i.test(message)) {
+        return t("simulationFailed");
+      }
+
+      return t("sendError");
+    },
+    [t],
+  );
+
+  const persistAddressBook = useCallback((nextEntries: AddressBookEntry[]) => {
+    setAddressBook(nextEntries);
+    try {
+      window.localStorage.setItem(
+        ADDRESS_BOOK_STORAGE_KEY,
+        JSON.stringify(nextEntries),
+      );
+    } catch {
+      // Local address book is a convenience feature; sending must keep working.
+    }
+  }, []);
+
+  const handleUnlockWallet = useCallback(async () => {
+    if (!email) {
+      setUnlockError(t("unlockSessionExpired"));
+      return;
+    }
+
+    if (!unlockPassword) {
+      setUnlockError(t("unlockPasswordRequired"));
+      return;
+    }
+
+    setUnlockingWallet(true);
+    setUnlockError(null);
+
+    try {
+      const wallet = await unlockOrCreateCyclosWallet(email, unlockPassword);
+      setEmailWalletSession(email, wallet.address, wallet.secretKeyBase64);
+      setUnlockPassword("");
+      setErrMsg("");
+      setStatus("idle");
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Cyclos wallet unlock failed:", error);
+      }
+      setUnlockError(t("unlockError"));
+    } finally {
+      setUnlockingWallet(false);
+    }
+  }, [email, setEmailWalletSession, t, unlockPassword]);
+
+  const handleSaveContact = useCallback(() => {
+    if (!isValidAddress(form.recipient)) {
+      setStatus("error");
+      setErrMsg(t("invalidAddress"));
+      return;
+    }
+
+    const entry: AddressBookEntry = {
+      id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}`,
+      name: contactName.trim() || shortAddress(form.recipient),
+      address: form.recipient,
+    };
+    const nextEntries = [
+      entry,
+      ...addressBook.filter((item) => item.address !== form.recipient),
+    ].slice(0, 50);
+
+    persistAddressBook(nextEntries);
+    setContactName("");
+    setContactSaved(true);
+    window.setTimeout(() => setContactSaved(false), 1800);
+  }, [addressBook, contactName, form.recipient, persistAddressBook, t]);
+
+  const handleRemoveContact = useCallback(
+    (entryId: string) => {
+      persistAddressBook(addressBook.filter((entry) => entry.id !== entryId));
+    },
+    [addressBook, persistAddressBook],
+  );
+
+  const handleSelectContact = useCallback((entry: AddressBookEntry) => {
+    setForm((current) => ({ ...current, recipient: entry.address }));
+    setErrMsg("");
+    setStatus("idle");
+  }, []);
+
   // ── Build + send transaction ───────────────────────────────────────────────
 
   const handleSend = useCallback(async () => {
@@ -460,6 +675,7 @@ export default function SendPage() {
 
     setStatus("signing");
     setErrMsg("");
+    setTxSig("");
 
     try {
       const connection = new Connection(getRpc(), "confirmed");
@@ -536,6 +752,7 @@ export default function SendPage() {
       setStatus("sending");
 
       const signature = await sendTransaction(tx, connection);
+      setTxSig(signature);
 
       // Confirm
       await connection.confirmTransaction(
@@ -543,11 +760,9 @@ export default function SendPage() {
         "confirmed",
       );
 
-      setTxSig(signature);
       setStatus("confirmed");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Transaction failed";
-      setErrMsg(msg);
+      setErrMsg(friendlyErrorMessage(err));
       setStatus("error");
     }
   }, [
@@ -556,6 +771,7 @@ export default function SendPage() {
     form.recipient,
     form.tokenAddress,
     parsedAmount,
+    friendlyErrorMessage,
     selectedBal?.token.decimals,
     sendTransaction,
   ]);
@@ -565,6 +781,7 @@ export default function SendPage() {
 
     setStatus("signing");
     setErrMsg("");
+    setTxSig("");
 
     try {
       const connection = new Connection(getRpc(), "confirmed");
@@ -599,16 +816,15 @@ export default function SendPage() {
 
       setStatus("sending");
       const signature = await sendTransaction(transaction, connection);
+      setTxSig(signature);
       await connection.confirmTransaction(signature, "confirmed");
 
-      setTxSig(signature);
       setStatus("confirmed");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Swap failed";
-      setErrMsg(msg);
+      setErrMsg(friendlyErrorMessage(err));
       setStatus("error");
     }
-  }, [address, canSwap, quote, sendTransaction]);
+  }, [address, canSwap, friendlyErrorMessage, quote, sendTransaction]);
 
   const handlePrimaryAction = useCallback(async () => {
     if (mode === "swap") {
@@ -737,6 +953,61 @@ export default function SendPage() {
               </button>
             ))}
           </div>
+
+          {walletLocked ? (
+            <div className="cy-card rounded-[1.4rem] border-amber-400/25 bg-amber-400/10 p-4">
+              <div className="flex items-start gap-3">
+                <AlertIcon />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-semibold text-white">
+                    {t("unlockWalletTitle")}
+                  </p>
+                  <p className="mt-1 text-[12px] leading-5 text-[#d4b76a]">
+                    {t("unlockWalletHint")}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  aria-label={t("unlockPasswordPlaceholder")}
+                  className="cy-input min-h-[46px] flex-1"
+                  disabled={unlockingWallet}
+                  onChange={(event) => {
+                    setUnlockPassword(event.target.value);
+                    setUnlockError(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !unlockingWallet) {
+                      void handleUnlockWallet();
+                    }
+                  }}
+                  placeholder={t("unlockPasswordPlaceholder")}
+                  type="password"
+                  value={unlockPassword}
+                />
+                <button
+                  className="btn-primary min-h-[46px] rounded-2xl px-4 text-[13px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={unlockingWallet}
+                  onClick={() => void handleUnlockWallet()}
+                  type="button"
+                >
+                  {unlockingWallet ? (
+                    <span className="inline-flex items-center gap-2">
+                      <LoaderIcon />
+                      {t("unlockingWallet")}
+                    </span>
+                  ) : (
+                    t("unlockWalletButton")
+                  )}
+                </button>
+              </div>
+              {unlockError ? (
+                <p className="mt-2 text-[12px] leading-5 text-red-200">
+                  {unlockError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           {/* ── Token selector ── */}
           <div className="cy-card rounded-[1.4rem] p-4">
@@ -990,6 +1261,77 @@ export default function SendPage() {
                 {t("invalidAddress") ?? "Invalid Solana address"}
               </p>
             )}
+
+            <div className="mt-4 rounded-2xl border border-white/[0.06] bg-dark-950/35 p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[12px] font-semibold text-white">
+                    {t("addressBook")}
+                  </p>
+                  <p className="text-[11px] leading-4 text-[#3d5070]">
+                    {t("addressBookHint")}
+                  </p>
+                </div>
+                <span className="rounded-full bg-accent-500/10 px-2 py-1 text-[11px] font-semibold text-accent-300">
+                  {addressBook.length}
+                </span>
+              </div>
+
+              {addressBook.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {addressBook.map((entry) => (
+                    <div
+                      className="flex shrink-0 items-center gap-1.5 rounded-xl border border-white/[0.07] bg-white/[0.04] p-1"
+                      key={entry.id}
+                    >
+                      <button
+                        className="rounded-lg px-2 py-1.5 text-left text-[12px] transition hover:bg-white/[0.05]"
+                        onClick={() => handleSelectContact(entry)}
+                        type="button"
+                      >
+                        <span className="block max-w-[120px] truncate font-semibold text-white">
+                          {entry.name}
+                        </span>
+                        <span className="block font-mono text-[10px] text-[#5d7ab8]">
+                          {shortAddress(entry.address)}
+                        </span>
+                      </button>
+                      <button
+                        aria-label={t("removeContact")}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-[#7a8faa] transition hover:bg-red-500/10 hover:text-red-200"
+                        onClick={() => handleRemoveContact(entry.id)}
+                        type="button"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-xl bg-white/[0.03] px-3 py-2 text-[12px] text-[#3d5070]">
+                  {t("noSavedContacts")}
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  className="cy-input min-h-[42px] flex-1 text-[13px]"
+                  disabled={isBusy}
+                  onChange={(event) => setContactName(event.target.value)}
+                  placeholder={t("contactNamePlaceholder")}
+                  type="text"
+                  value={contactName}
+                />
+                <button
+                  className="cy-chip min-h-[42px] justify-center px-4 text-[12px] font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!isValidAddress(form.recipient) || isBusy}
+                  onClick={handleSaveContact}
+                  type="button"
+                >
+                  {contactSaved ? t("contactSaved") : t("saveContact")}
+                </button>
+              </div>
+            </div>
           </div>
           )}
 
@@ -1067,11 +1409,38 @@ export default function SendPage() {
           {status === "error" && errMsg && (
             <div
               role="alert"
-              className="animate-fade-in flex items-start gap-3 rounded-2xl border
-                         border-red-500/30 bg-red-500/10 px-4 py-3"
+              className="animate-fade-in flex items-start gap-4 rounded-[1.4rem] border
+                         border-accent-500/25 bg-[radial-gradient(circle_at_20%_0%,rgba(59,111,255,0.18),rgba(11,18,35,0.92)_42%,rgba(11,18,35,0.72))]
+                         px-4 py-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)]"
             >
-              <AlertIcon />
-              <p className="text-[13px] text-red-100">{errMsg}</p>
+              <FriendlyStatusArt />
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-semibold text-white">
+                  {txSig ? t("transactionStatusTitle") : t("transactionIssueTitle")}
+                </p>
+                <p className="mt-1 text-[13px] leading-5 text-[#9fb0d0]">
+                  {errMsg}
+                </p>
+                {txSig ? (
+                  <a
+                    className="mt-3 inline-flex min-h-[38px] items-center justify-center gap-2 rounded-xl border border-accent-500/35 bg-accent-500/12 px-4 text-[12px] font-semibold text-accent-300 transition hover:bg-accent-500/20"
+                    href={`https://solscan.io/tx/${txSig}`}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    {t("viewOnSolscan")}
+                    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path
+                        d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6m0 0v6m0-6L10 14"
+                        stroke="currentColor"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                      />
+                    </svg>
+                  </a>
+                ) : null}
+              </div>
             </div>
           )}
 
@@ -1092,6 +1461,11 @@ export default function SendPage() {
                     ? (t("signing") ?? "Waiting for signature…")
                     : (t("sending") ?? "Sending…")}
                 </span>
+              </>
+            ) : walletLocked ? (
+              <>
+                <AlertIcon />
+                {t("unlockFirstButton")}
               </>
             ) : (
               <>

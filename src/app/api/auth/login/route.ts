@@ -4,7 +4,7 @@ import {
   isValidAuthPassword,
   normalizeAuthEmail,
 } from "@/lib/server/authInput";
-import { findUserByEmail } from "@/lib/server/accounts";
+import { findUserByEmail, recordUserLogin } from "@/lib/server/accounts";
 import { verifyPassword } from "@/lib/server/password";
 import {
   clearOtpCookie,
@@ -94,6 +94,14 @@ export async function POST(request: NextRequest) {
         401,
       );
     }
+
+    await recordUserLogin(user.email, request.headers.get("user-agent")).catch(
+      (error) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Login device capture failed:", error);
+        }
+      },
+    );
 
     const response = NextResponse.json({
       status: "ok",

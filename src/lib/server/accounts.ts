@@ -11,6 +11,9 @@ export interface AccountUser extends AuthUser {
   passwordSalt: string;
   passwordUpdatedAt: string;
   createdAt: string;
+  lastLoginAt?: string | null;
+  lastLoginDevice?: string | null;
+  lastLoginUserAgent?: string | null;
 }
 
 export interface EncryptedWalletRecord {
@@ -23,6 +26,16 @@ export interface EncryptedWalletRecord {
   iterations: number;
 }
 
+export interface RegisteredWalletRecord {
+  id: string;
+  email: string;
+  walletPublicKey: string | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+  lastLoginDevice: string | null;
+  lastLoginUserAgent: string | null;
+}
+
 interface AccountRow extends QueryResultRow {
   id: string;
   email: string;
@@ -30,6 +43,9 @@ interface AccountRow extends QueryResultRow {
   password_salt: string;
   password_updated_at: Date | string;
   created_at: Date | string;
+  last_login_at?: Date | string | null;
+  last_login_device?: string | null;
+  last_login_user_agent?: string | null;
   wallet_public_key?: string | null;
   wallet_encrypted_json?: EncryptedWalletRecord | string | null;
 }
@@ -50,6 +66,10 @@ function toIso(value: Date | string) {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
+function toNullableIso(value: Date | string | null | undefined) {
+  return value ? toIso(value) : null;
+}
+
 function rowToUser(row: AccountRow): AccountUser {
   return {
     id: row.id,
@@ -58,7 +78,45 @@ function rowToUser(row: AccountRow): AccountUser {
     passwordSalt: row.password_salt,
     passwordUpdatedAt: toIso(row.password_updated_at),
     createdAt: toIso(row.created_at),
+    lastLoginAt: toNullableIso(row.last_login_at),
+    lastLoginDevice: row.last_login_device ?? null,
+    lastLoginUserAgent: row.last_login_user_agent ?? null,
   };
+}
+
+export function describeUserAgent(userAgent: string | null) {
+  if (!userAgent) return "Unknown device";
+
+  const browser = /Edg\//.test(userAgent)
+    ? "Edge"
+    : /OPR\//.test(userAgent)
+      ? "Opera"
+      : /Firefox\//.test(userAgent)
+        ? "Firefox"
+        : /CriOS\//.test(userAgent)
+          ? "Chrome iOS"
+          : /Chrome\//.test(userAgent)
+            ? "Chrome"
+            : /Safari\//.test(userAgent)
+              ? "Safari"
+              : "Browser";
+
+  const device = /iPhone/.test(userAgent)
+    ? "iPhone"
+    : /iPad/.test(userAgent)
+      ? "iPad"
+      : /Android/.test(userAgent)
+        ? "Android"
+        : /Windows NT/.test(userAgent)
+          ? "Windows"
+          : /Mac OS X/.test(userAgent)
+            ? "macOS"
+            : /Linux/.test(userAgent)
+              ? "Linux"
+              : "Unknown OS";
+
+  const shell = /Telegram/i.test(userAgent) ? "Telegram" : null;
+  return [shell, browser, device].filter(Boolean).join(" / ");
 }
 
 function getPool() {
@@ -100,6 +158,15 @@ async function ensureSchema() {
 
     ALTER TABLE cyclos_users
       ADD COLUMN IF NOT EXISTS wallet_encrypted_json JSONB;
+
+    ALTER TABLE cyclos_users
+      ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+
+    ALTER TABLE cyclos_users
+      ADD COLUMN IF NOT EXISTS last_login_device TEXT;
+
+    ALTER TABLE cyclos_users
+      ADD COLUMN IF NOT EXISTS last_login_user_agent TEXT;
   `).then(() => undefined);
 
   await schemaReady;
@@ -130,7 +197,16 @@ export async function findUserByEmail(email: string) {
 
   await ensureSchema();
   const result = await getPool().query<AccountRow>(
-    `SELECT id, email, password_hash, password_salt, password_updated_at, created_at
+    `SELECT
+       id,
+       email,
+       password_hash,
+       password_salt,
+       password_updated_at,
+       created_at,
+       last_login_at,
+       last_login_device,
+       last_login_user_agent
      FROM cyclos_users
      WHERE email = $1
      LIMIT 1`,
@@ -138,6 +214,50 @@ export async function findUserByEmail(email: string) {
   );
 
   return result.rows[0] ? rowToUser(result.rows[0]) : null;
+}
+
+export async function recordUserLogin(email: string, userAgent: string | null) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const lastLoginAt = new Date().toISOString();
+  const lastLoginDevice = describeUserAgent(userAgent);
+  const lastLoginUserAgent = userAgent?.slice(0, 500) ?? null;
+
+  if (shouldUseLocalStore()) {
+    const data = await readLocalStore();
+    const user = data.users.find((item) => item.email === normalizedEmail);
+    if (!user) return null;
+
+    user.lastLoginAt = lastLoginAt;
+    user.lastLoginDevice = lastLoginDevice;
+    user.lastLoginUserAgent = lastLoginUserAgent;
+    await writeLocalStore(data);
+    return {
+      lastLoginAt,
+      lastLoginDevice,
+      lastLoginUserAgent,
+    };
+  }
+
+  await ensureSchema();
+  const result = await getPool().query<AccountRow>(
+    `UPDATE cyclos_users
+     SET last_login_at = NOW(),
+         last_login_device = $2,
+         last_login_user_agent = $3,
+         updated_at = NOW()
+     WHERE email = $1
+     RETURNING last_login_at, last_login_device, last_login_user_agent`,
+    [normalizedEmail, lastLoginDevice, lastLoginUserAgent],
+  );
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  return {
+    lastLoginAt: toNullableIso(row.last_login_at),
+    lastLoginDevice: row.last_login_device ?? null,
+    lastLoginUserAgent: row.last_login_user_agent ?? null,
+  };
 }
 
 function parseWalletRecord(value: AccountRow["wallet_encrypted_json"]) {
@@ -281,4 +401,45 @@ export async function updateUserPassword(
   );
 
   return result.rows[0] ? rowToUser(result.rows[0]) : null;
+}
+
+export async function listRegisteredWallets(): Promise<RegisteredWalletRecord[]> {
+  if (shouldUseLocalStore()) {
+    const data = await readLocalStore();
+    return data.users
+      .map((user) => ({
+        id: user.id,
+        email: user.email,
+        walletPublicKey: user.wallet?.publicKey ?? null,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt ?? null,
+        lastLoginDevice: user.lastLoginDevice ?? null,
+        lastLoginUserAgent: user.lastLoginUserAgent ?? null,
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  await ensureSchema();
+  const result = await getPool().query<AccountRow>(
+    `SELECT
+       id,
+       email,
+       wallet_public_key,
+       created_at,
+       last_login_at,
+       last_login_device,
+       last_login_user_agent
+     FROM cyclos_users
+     ORDER BY created_at DESC`,
+  );
+
+  return result.rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    walletPublicKey: row.wallet_public_key ?? null,
+    createdAt: toIso(row.created_at),
+    lastLoginAt: toNullableIso(row.last_login_at),
+    lastLoginDevice: row.last_login_device ?? null,
+    lastLoginUserAgent: row.last_login_user_agent ?? null,
+  }));
 }
