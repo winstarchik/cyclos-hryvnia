@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminApiSecret } from "@/lib/env";
-import { getAdminSessionFromRequest } from "@/lib/server/adminAuth";
+import { getAdminSessionFromRequest, isValidAdminSecret } from "@/lib/server/adminAuth";
 import { listRegisteredWallets } from "@/lib/server/accounts";
 
 export async function GET(request: NextRequest) {
   if (!getAdminApiSecret()) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (request.headers.has("authorization") && !isValidAdminSecret(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   if (!getAdminSessionFromRequest(request)) {
