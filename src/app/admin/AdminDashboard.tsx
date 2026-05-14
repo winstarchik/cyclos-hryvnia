@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { csrfFetch } from "@/lib/csrf";
 
 interface AdminWallet {
   id: string;
@@ -93,7 +94,9 @@ export function AdminDashboard() {
   const [copied, setCopied] = useState<string | null>(null);
 
   const lockAdmin = useCallback((message = "") => {
-    void fetch("/api/admin/session", { method: "DELETE" });
+    void csrfFetch("/api/admin/session", { method: "DELETE" }).catch(
+      () => undefined,
+    );
     setStep("locked");
     setSecretInput("");
     setCodeInput("");
@@ -106,14 +109,29 @@ export function AdminDashboard() {
   }, []);
 
   const fetchWallets = useCallback(
-    async () => {
+    async (secretOverride?: string) => {
+      const activeSecret = (secretOverride ?? secretInput).trim();
+      if (!activeSecret) {
+        setWallets([]);
+        setStep("locked");
+        return false;
+      }
+
       setLoading(true);
       setError("");
 
       try {
         const response = await fetch("/api/admin/wallets", {
+          headers: {
+            Authorization: `Bearer ${activeSecret}`,
+          },
           cache: "no-store",
         });
+
+        if (response.status === 401) {
+          lockAdmin("Wrong admin secret. Access was locked.");
+          return false;
+        }
 
         if (response.status === 403) {
           setWallets([]);
@@ -143,12 +161,8 @@ export function AdminDashboard() {
         setLoading(false);
       }
     },
-    [],
+    [lockAdmin, secretInput],
   );
-
-  useEffect(() => {
-    void fetchWallets();
-  }, [fetchWallets]);
 
   useEffect(() => {
     if (step !== "dashboard") return;
@@ -195,7 +209,7 @@ export function AdminDashboard() {
     setError("");
 
     try {
-      const response = await fetch("/api/admin/request-code", {
+      const response = await csrfFetch("/api/admin/request-code", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${normalizedSecret}`,
@@ -244,7 +258,7 @@ export function AdminDashboard() {
     setError("");
 
     try {
-      const response = await fetch("/api/admin/verify-code", {
+      const response = await csrfFetch("/api/admin/verify-code", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${activeSecret}`,
@@ -268,9 +282,8 @@ export function AdminDashboard() {
         throw new Error(await readError(response, "Could not verify admin code."));
       }
 
-      setSecretInput("");
       setCodeInput("");
-      await fetchWallets();
+      await fetchWallets(activeSecret);
     } catch (verifyError) {
       setError(
         verifyError instanceof Error

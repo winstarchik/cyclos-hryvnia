@@ -7,10 +7,10 @@ const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Cache-Control": "no-store",
+  Vary: "Origin",
 };
 
 function jsonResponse(body: unknown, status: number) {

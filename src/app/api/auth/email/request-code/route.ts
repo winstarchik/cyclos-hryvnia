@@ -8,6 +8,7 @@ import {
   generateEmailCode,
   type OtpPurpose,
 } from "@/lib/server/otp";
+import { csrfErrorResponse, verifyCsrfRequest } from "@/lib/server/csrf";
 import { checkRateLimit, getRateLimitKey } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
@@ -35,6 +36,10 @@ function parseMode(mode: unknown): OtpPurpose | null {
 }
 
 export async function POST(request: NextRequest) {
+  if (!verifyCsrfRequest(request)) {
+    return csrfErrorResponse();
+  }
+
   const body = (await request.json().catch(() => null)) as
     | { email?: unknown; mode?: unknown }
     | null;
@@ -50,7 +55,7 @@ export async function POST(request: NextRequest) {
     return authError("INVALID_MODE", "Choose sign in or registration.", 400);
   }
 
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     getRateLimitKey(request, `${mode}:${email}`),
     5,
     60_000,

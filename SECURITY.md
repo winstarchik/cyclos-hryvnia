@@ -2,11 +2,11 @@
 
 ## Architecture
 
-Cyclos Hryvnia is a Telegram Mini App and wallet UI with server-side email/password account authentication.
+Cyclos Hryvnia is a Telegram Mini App and non-custodial Solana wallet with server-side email/password account authentication.
 
 Email login and registration use a one-time code sent through SMTP before password verification or password creation. Passwords are hashed with `scrypt` and random salts. OTP tokens and browser sessions are signed and stored in HttpOnly cookies.
 
-The app does not store wallet private keys, seed phrases, user balances, transaction history, or Telegram profile data on the server in the MVP.
+The app stores the Cyclos email-wallet vault on the server only as encrypted client-side ciphertext. The plaintext Solana secret key is decrypted in the browser after the user enters their password, kept in module memory for the active tab, and is never persisted to Zustand, localStorage, sessionStorage, or server logs.
 
 Wallet access is delegated to wallet providers:
 
@@ -29,7 +29,10 @@ Public browser-safe variables:
 Server-only variables:
 
 - `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
 - `AUTH_SECRET`
+- `ADMIN_API_SECRET`
+- `ADMIN_EMAIL`
 - `DATABASE_URL`
 - `SMTP_HOST`
 - `SMTP_PORT`
@@ -48,41 +51,46 @@ Local secrets belong in `.env.local`, which is ignored by git. Vercel secrets mu
 - Database URLs, SMTP credentials, and auth signing secrets are server-only and must never use the `NEXT_PUBLIC_` prefix.
 - Wallet addresses are public identifiers and may appear in UI state.
 - The wallet store keeps only ephemeral auth state in memory. The durable app login is an HttpOnly cookie.
-- The app does not persist private keys, seed phrases, signed transactions, bot tokens, database URLs, or SMTP credentials in browser storage.
+- The app does not persist plaintext private keys, seed phrases, signed transactions, bot tokens, database URLs, or SMTP credentials in browser storage.
+- The decrypted Cyclos wallet key is held outside Zustand in a module-private browser variable and is cleared on logout.
+- The encrypted wallet vault can only be updated by an authenticated request that passes same-origin and CSRF-token checks.
 
 ## Account Auth Security
 
 - `POST /api/auth/email/request-code` validates email, checks account existence for the chosen mode, and sends a one-time code.
 - `POST /api/auth/register` verifies the signed OTP cookie, confirms matching passwords, hashes the password, and creates the user.
 - `POST /api/auth/login` verifies the signed OTP cookie and account password.
-- `POST /api/auth/password/forgot` sends a signed recovery link without revealing whether an email exists.
+- `POST /api/auth/password/forgot` sends a signed recovery link without revealing whether an email exists. Reset tokens are placed in the URL fragment (`#token=...`) so they are not sent in HTTP requests, Vercel route logs, or Referer headers.
 - `POST /api/auth/password/reset` verifies the signed recovery link, updates the stored password hash, and invalidates old reset links.
 - OTP, reset-token, password, and session checks use timing-safe comparisons where applicable.
 - Auth routes validate email/code/password shape before touching external services.
-- Auth routes include a lightweight per-IP/per-email rate limit. Production should add a persistent limiter such as Upstash Redis or Vercel Firewall rules.
-- Session cookies are HttpOnly, SameSite=Lax, path-scoped to `/`, and Secure in production.
+- Auth routes use a durable Postgres-backed per-IP/per-email rate limit in production. Local development falls back to an in-memory limiter.
+- Rate-limit IP keys prefer Vercel's trusted forwarding header. Generic `X-Forwarded-For` is ignored outside development unless `TRUST_PROXY_HEADERS=true`.
+- Session cookies are HttpOnly, `__Host-` prefixed in production, path-scoped to `/`, and Secure in production. Production uses `SameSite=None` for Telegram Mini App iframe compatibility and protects mutating routes with CSRF tokens.
+
+## CSRF Protection
+
+- `GET /api/auth/csrf` issues a signed CSRF token and an HttpOnly `__Host-cyclos_csrf` cookie in production.
+- Mutating cookie-authenticated routes require `X-CSRF-Token` and a matching CSRF cookie.
+- The server also rejects cross-origin mutating requests when the `Origin` header does not match the app origin.
+- This protects wallet-vault updates such as `PUT /api/auth/wallet` even while the session cookie uses `SameSite=None`.
 
 ## Wallet Security
 
 - Web3Auth SDK is used only when the user starts Google wallet auth.
 - The MVP has no wallet export/import flow.
-- Send transaction execution is intentionally not implemented yet.
-- Address validation happens before balance RPC calls and must also be enforced before real transaction signing in Phase 4.
+- The Cyclos email wallet signs SOL and SPL-token transfers locally after the user unlocks the encrypted vault with their password.
+- SPL transfers construct Associated Token Account and TransferChecked instructions directly with `@solana/web3.js`; `@solana/spl-token` is not shipped in the app bundle.
+- Jupiter swap quote and transaction responses are checked against the requested mints, amount, route shape, and connected signer before signing.
+- Address validation happens before balance RPC calls and before transaction signing.
 - Error messages should stay user-friendly and avoid exposing provider internals or secret values.
 
 ## Telegram Mini App Security
 
-Current MVP behavior:
-
-- The app reads launch parameters from `window.Telegram.WebApp`.
-- Telegram user id can be used as a public app identifier when needed.
+- The app verifies Telegram Mini App `initData` server-side through `/api/tma/verify` using the bot token and Telegram's HMAC algorithm before trusting Telegram identity.
+- `initDataUnsafe` is used only as a development fallback outside production.
+- The Telegram webhook requires the `x-telegram-bot-api-secret-token` header in production.
 - HTTPS is required in production and provided by Vercel.
-
-Known Phase 2 hardening:
-
-- Verify Telegram `initData` signature server-side before trusting launch data.
-- Validate and allowlist launch/start parameters.
-- Add rate limiting for any future API endpoints that consume Telegram data.
 
 ## API Routes
 
@@ -95,7 +103,10 @@ Current API surface:
 - `POST /api/auth/password/forgot`: public password recovery email endpoint with rate limiting.
 - `POST /api/auth/password/reset`: public password reset endpoint with signed-token validation and rate limiting.
 - `GET /api/auth/session`: reads the current HttpOnly app session.
-- `DELETE /api/auth/session`: clears the current app session.
+- `DELETE /api/auth/session`: clears the current app session and requires CSRF.
+- `GET /api/auth/wallet`: returns the authenticated user's encrypted wallet vault.
+- `PUT /api/auth/wallet`: saves the authenticated user's encrypted wallet vault and requires CSRF.
+- `POST /api/tma/verify`: verifies Telegram Mini App launch data.
 
 The health endpoint performs no RPC calls, reads no PII, and always returns a fast JSON status when the app is running.
 
@@ -105,6 +116,7 @@ Future API endpoints should:
 
 - Validate request methods and payloads.
 - Add rate limiting where abuse is possible.
+- Require CSRF on cookie-authenticated mutating routes.
 - Avoid logging request bodies that can contain PII or secrets.
 - Return `401`/`403` for authenticated routes and `503` for degraded dependency checks.
 
@@ -113,12 +125,13 @@ Future API endpoints should:
 Global response headers are configured in `next.config.js`:
 
 - `X-Content-Type-Options: nosniff`
-- `X-Frame-Options: DENY`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`
 - `X-DNS-Prefetch-Control: off`
+- `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
+- `Content-Security-Policy` with Telegram frame ancestors and production `unsafe-eval` disabled
 
-A strict Content Security Policy is deferred until wallet, Web3Auth, Telegram WebView, and external wallet runtime domains are fully mapped and tested.
+`X-Frame-Options` is intentionally not used because the app must be embeddable in Telegram. Framing is restricted through CSP `frame-ancestors`.
 
 ## Dependency Audit
 
@@ -132,6 +145,7 @@ High advisories found during the audit were remediated by removing unused or rep
 
 - Removed `@solana/spl-token`; the app now defines the SPL Token Program ID locally.
 - Removed Telegram SDK packages; the app now reads launch params from `window.Telegram.WebApp`.
+- Removed the `bigint-buffer` vulnerability path by removing `@solana/spl-token` from runtime dependencies.
 
 Known tracked exception:
 

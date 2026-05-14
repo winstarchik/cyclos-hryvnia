@@ -3,6 +3,7 @@ import { isValidAuthEmail, normalizeAuthEmail } from "@/lib/server/authInput";
 import { findUserByEmail } from "@/lib/server/accounts";
 import { sendPasswordResetEmail } from "@/lib/server/email";
 import { createPasswordResetToken } from "@/lib/server/resetToken";
+import { csrfErrorResponse, verifyCsrfRequest } from "@/lib/server/csrf";
 import { checkRateLimit, getRateLimitKey } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
@@ -16,6 +17,10 @@ function parseLocale(value: unknown) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!verifyCsrfRequest(request)) {
+    return csrfErrorResponse();
+  }
+
   const body = (await request.json().catch(() => null)) as
     | { email?: unknown; locale?: unknown }
     | null;
@@ -27,7 +32,7 @@ export async function POST(request: NextRequest) {
     return authError("INVALID_EMAIL", "Enter a valid email address.", 400);
   }
 
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     getRateLimitKey(request, `forgot:${email}`),
     5,
     60_000,
@@ -45,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     if (user) {
       const resetToken = createPasswordResetToken(user);
-      const resetUrl = `${request.nextUrl.origin}/${locale}/reset-password?token=${encodeURIComponent(resetToken)}`;
+      const resetUrl = `${request.nextUrl.origin}/${locale}/reset-password#token=${encodeURIComponent(resetToken)}`;
       await sendPasswordResetEmail(user.email, resetUrl);
     }
 

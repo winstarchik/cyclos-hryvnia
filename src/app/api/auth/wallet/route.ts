@@ -5,6 +5,7 @@ import {
   setUserEncryptedWallet,
   type EncryptedWalletRecord,
 } from "@/lib/server/accounts";
+import { csrfErrorResponse, verifyCsrfRequest } from "@/lib/server/csrf";
 import { getSessionFromRequest } from "@/lib/server/session";
 
 export const runtime = "nodejs";
@@ -75,6 +76,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  if (!verifyCsrfRequest(request)) {
+    return csrfErrorResponse();
+  }
+
   const session = getSessionFromRequest(request);
 
   if (!session) {
@@ -121,4 +126,3 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
-

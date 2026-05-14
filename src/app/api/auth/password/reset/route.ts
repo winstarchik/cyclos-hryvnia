@@ -8,6 +8,7 @@ import {
 import { hashPassword } from "@/lib/server/password";
 import { verifyPasswordResetToken } from "@/lib/server/resetToken";
 import { attachSessionCookie } from "@/lib/server/session";
+import { csrfErrorResponse, verifyCsrfRequest } from "@/lib/server/csrf";
 import { checkRateLimit, getRateLimitKey } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
@@ -17,6 +18,10 @@ function authError(error: string, message: string, status: number) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!verifyCsrfRequest(request)) {
+    return csrfErrorResponse();
+  }
+
   const body = (await request.json().catch(() => null)) as
     | { token?: unknown; password?: unknown; confirmPassword?: unknown }
     | null;
@@ -42,7 +47,7 @@ export async function POST(request: NextRequest) {
     return authError("PASSWORD_MISMATCH", "Passwords do not match.", 400);
   }
 
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     getRateLimitKey(request, `reset:${payload.email}`),
     10,
     60_000,

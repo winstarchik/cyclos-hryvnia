@@ -7,6 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { useWallet } from "@/hooks/useWallet";
 import { unlockOrCreateCyclosWallet } from "@/lib/clientWallet";
+import { setEmailWalletSecretKey } from "@/lib/clientWalletSession";
+import { csrfFetch } from "@/lib/csrf";
 
 type AuthMode = "login" | "register";
 type AuthStep = "email" | "code" | "password";
@@ -133,9 +135,8 @@ export default function EmailLoginPage() {
       } catch {
         // Remembered email is only a convenience.
       }
-      const response = await fetch("/api/auth/email/request-code", {
+      const response = await csrfFetch("/api/auth/email/request-code", {
         body: JSON.stringify({ email: trimmedEmail, mode }),
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -200,7 +201,7 @@ export default function EmailLoginPage() {
     clearError();
 
     try {
-      const response = await fetch(
+      const response = await csrfFetch(
         mode === "login" ? "/api/auth/login" : "/api/auth/register",
         {
           body: JSON.stringify({
@@ -209,7 +210,6 @@ export default function EmailLoginPage() {
             email: trimmedEmail,
             password,
           }),
-          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
@@ -233,11 +233,8 @@ export default function EmailLoginPage() {
         authenticatedEmail,
         password,
       );
-      setEmailWalletSession(
-        authenticatedEmail,
-        wallet.address,
-        wallet.secretKeyBase64,
-      );
+      setEmailWalletSecretKey(wallet.secretKeyBase64);
+      setEmailWalletSession(authenticatedEmail, wallet.address);
       router.replace(`/${locale}/wallet`);
     } catch (error) {
       if (process.env.NODE_ENV !== "production") {

@@ -46,6 +46,30 @@ function getLaunchParams(): LaunchParamsLike {
   };
 }
 
+async function verifyLaunchParams(
+  initData: string,
+  platform: string | undefined,
+) {
+  const response = await fetch("/api/tma/verify", {
+    body: JSON.stringify({ initData, platform }),
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+  });
+
+  if (!response.ok) return null;
+
+  const payload = (await response.json()) as {
+    data?: {
+      user?: TMAUser;
+    };
+  };
+
+  return payload.data?.user ?? null;
+}
+
 /**
  * Initialize Telegram Mini App context from launch parameters.
  *
@@ -60,6 +84,23 @@ export async function initializeTMA(): Promise<TMAUser | null> {
 
   try {
     const params = getLaunchParams();
+    const webApp = window.Telegram?.WebApp as TelegramWebAppLike | undefined;
+
+    if (webApp?.initData) {
+      const verifiedUser = await verifyLaunchParams(
+        webApp.initData,
+        params.platform,
+      );
+
+      cachedUser = verifiedUser;
+      return verifiedUser;
+    }
+
+    if (process.env.NODE_ENV === "production") {
+      cachedUser = null;
+      return null;
+    }
+
     const user = params.initDataUnsafe?.user;
 
     const userId =

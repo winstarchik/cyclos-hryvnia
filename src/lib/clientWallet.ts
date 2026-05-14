@@ -1,6 +1,7 @@
 "use client";
 
 import { Keypair } from "@solana/web3.js";
+import { csrfFetch } from "@/lib/csrf";
 
 export interface EncryptedCyclosWallet {
   version: 1;
@@ -191,9 +192,8 @@ export async function fetchEncryptedCyclosWallet() {
 }
 
 async function saveEncryptedCyclosWallet(wallet: EncryptedCyclosWallet) {
-  const response = await fetch("/api/auth/wallet", {
+  const response = await csrfFetch("/api/auth/wallet", {
     body: JSON.stringify({ wallet }),
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",

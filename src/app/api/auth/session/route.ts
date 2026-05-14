@@ -3,6 +3,11 @@ import {
   clearSessionCookie,
   getSessionFromRequest,
 } from "@/lib/server/session";
+import {
+  clearCsrfCookie,
+  csrfErrorResponse,
+  verifyCsrfRequest,
+} from "@/lib/server/csrf";
 
 export const runtime = "nodejs";
 
@@ -27,7 +32,12 @@ export async function GET(request: NextRequest) {
   });
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  if (!verifyCsrfRequest(request)) {
+    return csrfErrorResponse();
+  }
+
   const response = NextResponse.json({ status: "ok" });
-  return clearSessionCookie(response);
+  clearSessionCookie(response);
+  return clearCsrfCookie(response);
 }

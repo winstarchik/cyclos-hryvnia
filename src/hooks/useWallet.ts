@@ -29,6 +29,11 @@ import {
   fetchEncryptedCyclosWallet,
   keypairFromSecretKeyBase64,
 } from "@/lib/clientWallet";
+import {
+  clearEmailWalletSecretKey,
+  getEmailWalletSecretKey,
+} from "@/lib/clientWalletSession";
+import { clearCachedCsrfToken, csrfFetch } from "@/lib/csrf";
 import { logDevError } from "@/lib/errors";
 import {
   INJECTED_SOLANA_WALLET_NOT_FOUND,
@@ -116,11 +121,7 @@ export type UseWalletResult = Pick<
   connectEmail: (loginHint?: string) => Promise<void>;
   connectGoogle: () => Promise<void>;
   setEmailPasswordSession: (email: string, address?: string | null) => void;
-  setEmailWalletSession: (
-    email: string,
-    address: string,
-    secretKeyBase64: string,
-  ) => void;
+  setEmailWalletSession: (email: string, address: string) => void;
   /**
    * Connects an installed Solana wallet such as Phantom or Solflare.
    */
@@ -155,9 +156,6 @@ export type UseWalletResult = Pick<
 export function useWallet(): UseWalletResult {
   const address = useWalletStore((state) => state.address);
   const email = useWalletStore((state) => state.email);
-  const emailWalletSecretKey = useWalletStore(
-    (state) => state.emailWalletSecretKey,
-  );
   const walletLocked = useWalletStore((state) => state.walletLocked);
   const connected = useWalletStore((state) => state.connected);
   const provider = useWalletStore((state) => state.provider);
@@ -382,9 +380,8 @@ export function useWallet(): UseWalletResult {
   const disconnect = useCallback(async () => {
     if (provider === "email") {
       try {
-        await fetch("/api/auth/session", {
+        await csrfFetch("/api/auth/session", {
           method: "DELETE",
-          credentials: "include",
         });
       } catch {
         // Local store cleanup below still logs the user out in the browser.
@@ -407,6 +404,8 @@ export function useWallet(): UseWalletResult {
       }
     }
 
+    clearEmailWalletSecretKey();
+    clearCachedCsrfToken();
     await disconnectStore();
   }, [disconnectStore, disconnectWeb3Auth, provider, setError]);
 
@@ -422,6 +421,8 @@ export function useWallet(): UseWalletResult {
       }
 
       if (provider === "email") {
+        const emailWalletSecretKey = getEmailWalletSecretKey();
+
         if (!emailWalletSecretKey) {
           throw new Error(
             "Unlock your Cyclos wallet by signing in with email again before sending.",
@@ -466,7 +467,7 @@ export function useWallet(): UseWalletResult {
 
       throw new Error("Connect a blockchain wallet before sending.");
     },
-    [emailWalletSecretKey, provider, signAndSendTransaction],
+    [provider, signAndSendTransaction],
   );
 
   return {

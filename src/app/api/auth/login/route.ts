@@ -12,6 +12,7 @@ import {
   verifyOtpToken,
 } from "@/lib/server/otp";
 import { attachSessionCookie } from "@/lib/server/session";
+import { csrfErrorResponse, verifyCsrfRequest } from "@/lib/server/csrf";
 import { checkRateLimit, getRateLimitKey } from "@/lib/server/rateLimit";
 
 export const runtime = "nodejs";
@@ -21,6 +22,10 @@ function authError(error: string, message: string, status: number) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!verifyCsrfRequest(request)) {
+    return csrfErrorResponse();
+  }
+
   const body = (await request.json().catch(() => null)) as
     | { email?: unknown; code?: unknown; password?: unknown }
     | null;
@@ -41,7 +46,7 @@ export async function POST(request: NextRequest) {
     return authError("INVALID_PASSWORD", "Enter your account password.", 400);
   }
 
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     getRateLimitKey(request, `login:${email}`),
     10,
     60_000,

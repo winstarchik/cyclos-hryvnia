@@ -78,10 +78,10 @@ const MARKET_TOKENS: MarketTokenConfig[] = [
 ];
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+  Vary: "Origin",
 };
 
 function fallbackPoints(price: number, change24h: number): number[] {

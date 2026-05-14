@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSecret } from "@/lib/env";
 import type { AuthUser } from "@/lib/server/authInput";
 
-export const SESSION_COOKIE_NAME = "cyclos_session";
+export const SESSION_COOKIE_NAME =
+  process.env.NODE_ENV === "production" ? "__Host-cyclos_session" : "cyclos_session";
+const LEGACY_SESSION_COOKIE_NAME = "cyclos_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7;
 const SESSION_VERSION = 2;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
@@ -99,6 +101,16 @@ export function clearSessionCookie(response: NextResponse) {
     path: "/",
     maxAge: 0,
   });
+
+  if (SESSION_COOKIE_NAME !== LEGACY_SESSION_COOKIE_NAME) {
+    response.cookies.set(LEGACY_SESSION_COOKIE_NAME, "", {
+      httpOnly: true,
+      secure: IS_PRODUCTION,
+      sameSite: IS_PRODUCTION ? "none" : "lax",
+      path: "/",
+      maxAge: 0,
+    });
+  }
 
   return response;
 }

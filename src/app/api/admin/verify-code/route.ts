@@ -7,9 +7,14 @@ import {
   isValidAdminSecret,
   verifyAdminOtpToken,
 } from "@/lib/server/adminAuth";
+import { csrfErrorResponse, verifyCsrfRequest } from "@/lib/server/csrf";
 import { checkRateLimit, getRateLimitKey } from "@/lib/server/rateLimit";
 
 export async function POST(request: NextRequest) {
+  if (!verifyCsrfRequest(request)) {
+    return csrfErrorResponse();
+  }
+
   if (!getAdminApiSecret()) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -33,7 +38,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     getRateLimitKey(request, "admin-verify"),
     6,
     60_000,

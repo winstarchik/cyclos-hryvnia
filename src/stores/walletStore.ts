@@ -20,7 +20,6 @@ export type WalletProvider =
 export interface WalletStoreType {
   address: string | null;
   email: string | null;
-  emailWalletSecretKey: string | null;
   walletLocked: boolean;
   connected: boolean;
   provider: WalletProvider;
@@ -51,11 +50,7 @@ export interface WalletStoreActions {
   /**
    * Persist an unlocked Cyclos email-wallet session after the vault decrypts.
    */
-  setEmailWalletSession: (
-    email: string,
-    address: string,
-    secretKeyBase64: string,
-  ) => void;
+  setEmailWalletSession: (email: string, address: string) => void;
   /**
    * Persist a Web3Auth session after the React SDK reports a Solana account.
    */
@@ -90,7 +85,6 @@ export type WalletStore = WalletStoreType & WalletStoreActions;
 const initialState: WalletStoreType = {
   address: null,
   email: null,
-  emailWalletSecretKey: null,
   walletLocked: false,
   connected: false,
   provider: null,
@@ -157,7 +151,6 @@ export const useWalletStore = create<WalletStore>()((set) => ({
     set({
       address,
       email,
-      emailWalletSecretKey: null,
       walletLocked: Boolean(address),
       connected: true,
       provider: "email",
@@ -167,11 +160,10 @@ export const useWalletStore = create<WalletStore>()((set) => ({
     });
   },
 
-  setEmailWalletSession: (email, address, secretKeyBase64) => {
+  setEmailWalletSession: (email, address) => {
     set({
       address,
       email,
-      emailWalletSecretKey: secretKeyBase64,
       walletLocked: false,
       connected: true,
       provider: "email",
@@ -185,7 +177,6 @@ export const useWalletStore = create<WalletStore>()((set) => ({
     set({
       address,
       email: null,
-      emailWalletSecretKey: null,
       walletLocked: false,
       connected: true,
       provider: "web3auth",
@@ -199,7 +190,6 @@ export const useWalletStore = create<WalletStore>()((set) => ({
     set({
       address,
       email: null,
-      emailWalletSecretKey: null,
       walletLocked: false,
       connected: true,
       provider,

@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { useWallet } from "@/hooks/useWallet";
+import { csrfFetch } from "@/lib/csrf";
 
 interface ApiResponse {
   status: "ok" | "error";
@@ -35,13 +36,28 @@ export default function ResetPasswordPage() {
   const passwordInputId = useId();
   const confirmPasswordInputId = useId();
   const errorId = useId();
-  const token = searchParams.get("token") ?? "";
+  const [token, setToken] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [localErrorKey, setLocalErrorKey] = useState<string | null>(
-    token ? null : "invalidResetLink",
+    null,
   );
+
+  useEffect(() => {
+    const hashToken = new URLSearchParams(
+      window.location.hash.replace(/^#/, ""),
+    ).get("token");
+    const queryToken = searchParams.get("token");
+    const nextToken = hashToken ?? queryToken ?? "";
+
+    setToken(nextToken);
+    setLocalErrorKey(nextToken ? null : "invalidResetLink");
+
+    if (nextToken && (window.location.hash || queryToken)) {
+      window.history.replaceState(null, "", `/${locale}/reset-password`);
+    }
+  }, [locale, searchParams]);
 
   async function resetPassword() {
     if (password.length < 8 || password.length > 128) {
@@ -58,9 +74,8 @@ export default function ResetPasswordPage() {
     setLocalErrorKey(null);
 
     try {
-      const response = await fetch("/api/auth/password/reset", {
+      const response = await csrfFetch("/api/auth/password/reset", {
         body: JSON.stringify({ confirmPassword, password, token }),
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

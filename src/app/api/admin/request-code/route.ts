@@ -7,10 +7,15 @@ import {
   isValidAdminSecret,
   maskEmail,
 } from "@/lib/server/adminAuth";
+import { csrfErrorResponse, verifyCsrfRequest } from "@/lib/server/csrf";
 import { sendAdminCodeEmail } from "@/lib/server/email";
 import { checkRateLimit, getRateLimitKey } from "@/lib/server/rateLimit";
 
 export async function POST(request: NextRequest) {
+  if (!verifyCsrfRequest(request)) {
+    return csrfErrorResponse();
+  }
+
   if (!getAdminApiSecret()) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -27,7 +32,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     getRateLimitKey(request, `admin-code:${adminEmail}`),
     3,
     60_000,
@@ -67,4 +72,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

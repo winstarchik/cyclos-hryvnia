@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
+import { csrfFetch } from "@/lib/csrf";
 
 interface ApiResponse {
   status: "ok" | "error";
@@ -38,9 +39,8 @@ export default function ForgotPasswordPage() {
     setLocalErrorKey(null);
 
     try {
-      const response = await fetch("/api/auth/password/forgot", {
+      const response = await csrfFetch("/api/auth/password/forgot", {
         body: JSON.stringify({ email: trimmedEmail, locale }),
-        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },

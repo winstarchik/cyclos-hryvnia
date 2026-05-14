@@ -11,19 +11,13 @@ import {
   Transaction as SolanaTransaction,
   VersionedTransaction,
   LAMPORTS_PER_SOL,
+  type TransactionInstruction,
 } from "@solana/web3.js";
-import {
-  createTransferCheckedInstruction,
-  getAssociatedTokenAddress,
-  createAssociatedTokenAccountInstruction,
-  getAccount,
-  TokenAccountNotFoundError,
-  TokenInvalidAccountOwnerError,
-} from "@solana/spl-token";
 import { useWallet } from "@/hooks/useWallet";
 import { useBalance } from "@/hooks/useBalance";
 import { TOKENS } from "@/constants/tokens";
 import { unlockOrCreateCyclosWallet } from "@/lib/clientWallet";
+import { setEmailWalletSecretKey } from "@/lib/clientWalletSession";
 import type { Balance, Token } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -79,6 +73,12 @@ function getRpc(): string {
 }
 
 const SOL_MINT_ADDRESS = "So11111111111111111111111111111111111111112";
+const TOKEN_PROGRAM_ID = new PublicKey(
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+);
+const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
+  "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+);
 const JUPITER_QUOTE_URL = "https://api.jup.ag/swap/v1/quote";
 const JUPITER_SWAP_URL = "https://api.jup.ag/swap/v1/swap";
 const ADDRESS_BOOK_STORAGE_KEY = "cyclos:address-book:v1";
@@ -104,6 +104,90 @@ function toSwapMint(tokenAddress: string): string {
   return tokenAddress === "SOL" ? SOL_MINT_ADDRESS : tokenAddress;
 }
 
+function encodeU64LE(value: bigint) {
+  const bytes = new Uint8Array(8);
+  let remaining = value;
+
+  for (let index = 0; index < 8; index += 1) {
+    bytes[index] = Number(remaining & BigInt(0xff));
+    remaining >>= BigInt(8);
+  }
+
+  return bytes;
+}
+
+async function getAssociatedTokenAddress(
+  mint: PublicKey,
+  owner: PublicKey,
+) {
+  const [address] = PublicKey.findProgramAddressSync(
+    [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+  );
+
+  return address;
+}
+
+function createAssociatedTokenAccountInstruction(
+  payer: PublicKey,
+  associatedToken: PublicKey,
+  owner: PublicKey,
+  mint: PublicKey,
+): TransactionInstruction {
+  return {
+    data: new Uint8Array() as unknown as Buffer,
+    keys: [
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: associatedToken, isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
+  };
+}
+
+function createTransferCheckedInstruction(
+  source: PublicKey,
+  mint: PublicKey,
+  destination: PublicKey,
+  owner: PublicKey,
+  amount: bigint,
+  decimals: number,
+): TransactionInstruction {
+  const data = new Uint8Array(10);
+  data[0] = 12;
+  data.set(encodeU64LE(amount), 1);
+  data[9] = decimals;
+
+  return {
+    data: data as unknown as Buffer,
+    keys: [
+      { pubkey: source, isSigner: false, isWritable: true },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: destination, isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: true, isWritable: false },
+    ],
+    programId: TOKEN_PROGRAM_ID,
+  };
+}
+
+async function assertTokenAccountExists(
+  connection: Connection,
+  tokenAccount: PublicKey,
+) {
+  const account = await connection.getAccountInfo(tokenAccount, "confirmed");
+
+  if (!account) {
+    throw new Error("TOKEN_ACCOUNT_NOT_FOUND");
+  }
+
+  if (!account.owner.equals(TOKEN_PROGRAM_ID)) {
+    throw new Error("TOKEN_ACCOUNT_INVALID_OWNER");
+  }
+}
+
 function toBaseUnits(value: string, decimals: number): string | null {
   const normalized = value.trim().replace(",", ".");
   if (!/^\d+(\.\d+)?$/.test(normalized)) return null;
@@ -122,6 +206,48 @@ function fromBaseUnits(value: string, decimals: number): number {
   const whole = raw / base;
   const fraction = raw % base;
   return Number(whole) + Number(fraction) / Number(base);
+}
+
+function validateJupiterQuote(
+  quote: JupiterQuoteResponse,
+  expectedInputMint: string,
+  expectedOutputMint: string,
+  expectedInAmount: string,
+) {
+  if (
+    quote.inputMint !== expectedInputMint ||
+    quote.outputMint !== expectedOutputMint ||
+    quote.inAmount !== expectedInAmount
+  ) {
+    throw new Error("Jupiter quote does not match the requested swap.");
+  }
+
+  if (
+    BigInt(quote.outAmount) <= BigInt(0) ||
+    BigInt(quote.otherAmountThreshold) <= BigInt(0) ||
+    !quote.routePlan?.length ||
+    quote.routePlan.some((item) => !item.swapInfo.ammKey)
+  ) {
+    throw new Error("Jupiter returned an unsafe or incomplete route.");
+  }
+}
+
+function validateJupiterSwapTransaction(
+  transaction: VersionedTransaction,
+  userAddress: string,
+) {
+  const signerCount = transaction.message.header.numRequiredSignatures;
+  const signerKeys = transaction.message.staticAccountKeys
+    .slice(0, signerCount)
+    .map((key) => key.toBase58());
+
+  if (!signerKeys.includes(userAddress)) {
+    throw new Error("Jupiter transaction is not signed by the connected wallet.");
+  }
+
+  if (transaction.message.staticAccountKeys.length > 64) {
+    throw new Error("Jupiter transaction is larger than expected.");
+  }
 }
 
 function base64ToBytes(base64: string): Uint8Array {
@@ -549,6 +675,7 @@ export default function SendPage() {
         if (!payload.outAmount) {
           throw new Error("Jupiter returned an empty quote.");
         }
+        validateJupiterQuote(payload, inputMint, outputMint, rawAmount);
 
         setQuote(payload);
       } catch (quoteError) {
@@ -636,7 +763,8 @@ export default function SendPage() {
 
     try {
       const wallet = await unlockOrCreateCyclosWallet(email, unlockPassword);
-      setEmailWalletSession(email, wallet.address, wallet.secretKeyBase64);
+      setEmailWalletSecretKey(wallet.secretKeyBase64);
+      setEmailWalletSession(email, wallet.address);
       setUnlockPassword("");
       setErrMsg("");
       setStatus("idle");
@@ -735,11 +863,12 @@ export default function SendPage() {
 
         // Create destination ATA if it doesn't exist yet
         try {
-          await getAccount(connection, destAta, "confirmed");
+          await assertTokenAccountExists(connection, destAta);
         } catch (e: unknown) {
           if (
-            e instanceof TokenAccountNotFoundError ||
-            e instanceof TokenInvalidAccountOwnerError
+            e instanceof Error &&
+            (e.message === "TOKEN_ACCOUNT_NOT_FOUND" ||
+              e.message === "TOKEN_ACCOUNT_INVALID_OWNER")
           ) {
             tx.add(
               createAssociatedTokenAccountInstruction(
@@ -814,6 +943,15 @@ export default function SendPage() {
 
     try {
       const connection = new Connection(getRpc(), "confirmed");
+      const inputMint = toSwapMint(selectedBal.token.address);
+      const outputMint = toSwapMint(swapOutputAddress);
+      const rawAmount = toBaseUnits(form.amount, selectedBal.token.decimals);
+
+      if (!rawAmount) {
+        throw new Error("Enter a valid amount.");
+      }
+
+      validateJupiterQuote(quote, inputMint, outputMint, rawAmount);
 
       const response = await fetch(JUPITER_SWAP_URL, {
         method: "POST",
@@ -842,6 +980,7 @@ export default function SendPage() {
       const transaction = VersionedTransaction.deserialize(
         base64ToBytes(payload.swapTransaction),
       );
+      validateJupiterSwapTransaction(transaction, address);
 
       setStatus("sending");
       const signature = await sendTransaction(transaction, connection);
@@ -861,7 +1000,18 @@ export default function SendPage() {
       setErrMsg(friendlyErrorMessage(err));
       setStatus("error");
     }
-  }, [address, canSwap, friendlyErrorMessage, quote, sendTransaction, t]);
+  }, [
+    address,
+    canSwap,
+    form.amount,
+    friendlyErrorMessage,
+    quote,
+    selectedBal?.token.address,
+    selectedBal?.token.decimals,
+    sendTransaction,
+    swapOutputAddress,
+    t,
+  ]);
 
   const handlePrimaryAction = useCallback(async () => {
     if (mode === "swap") {
