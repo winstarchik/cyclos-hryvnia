@@ -23,7 +23,8 @@ This project uses public browser-safe variables for wallet and RPC setup, and se
 
 - `TELEGRAM_BOT_TOKEN`: Telegram bot token. Never prefix this with `NEXT_PUBLIC_`.
 - `AUTH_SECRET`: Long random secret used to sign the HttpOnly app session cookie.
-- `ADMIN_API_SECRET`: Optional bearer token for protected admin wallet exports at `/api/admin/wallets`.
+- `ADMIN_API_SECRET`: Optional bearer token for protected admin wallet exports and the `/admin` dashboard.
+- `ADMIN_EMAIL`: Email address that receives the second-factor code for `/admin`. If omitted, the app falls back to `SMTP_USER`.
 - `DATABASE_URL`: Production Postgres connection string for account storage. Local development can run without it and uses `.data/cyclos-users.json`.
 - `SMTP_HOST`: SMTP host used to send email verification codes and password recovery links.
 - `SMTP_PORT`: SMTP port, usually `465` for SSL or `587` for STARTTLS.
@@ -55,6 +56,7 @@ NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 TELEGRAM_BOT_TOKEN=TEST_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-local-secret
 ADMIN_API_SECRET=replace-with-a-long-random-admin-secret
+ADMIN_EMAIL=admin@example.com
 # Optional locally, required in production
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/cyclos
 SMTP_HOST=smtp.gmail.com
@@ -90,6 +92,7 @@ NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=...
 AUTH_SECRET=...
 ADMIN_API_SECRET=...
+ADMIN_EMAIL=...
 DATABASE_URL=...
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465

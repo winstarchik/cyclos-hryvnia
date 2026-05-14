@@ -21,6 +21,8 @@ interface AdminWalletsPayload {
   };
 }
 
+type AdminStep = "locked" | "code" | "dashboard";
+
 const SECRET_STORAGE_KEY = "cyclos:admin-secret";
 const AUTO_REFRESH_MS = 30_000;
 
@@ -68,74 +70,113 @@ function buildCsv(wallets: AdminWallet[]) {
     .join("\n");
 }
 
+async function readError(response: Response, fallback: string) {
+  try {
+    const payload = (await response.json()) as { error?: string };
+    return payload.error ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function AdminDashboard() {
+  const [step, setStep] = useState<AdminStep>("locked");
   const [secretInput, setSecretInput] = useState("");
   const [adminSecret, setAdminSecret] = useState("");
+  const [codeInput, setCodeInput] = useState("");
+  const [maskedEmail, setMaskedEmail] = useState("");
   const [wallets, setWallets] = useState<AdminWallet[]>([]);
   const [loading, setLoading] = useState(false);
+  const [requestingCode, setRequestingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
+  const lockAdmin = useCallback((message = "") => {
+    window.sessionStorage.removeItem(SECRET_STORAGE_KEY);
+    void fetch("/api/admin/session", { method: "DELETE" });
+    setStep("locked");
+    setSecretInput("");
+    setAdminSecret("");
+    setCodeInput("");
+    setMaskedEmail("");
+    setWallets([]);
+    setLastUpdated(null);
+    setQuery("");
+    setCopied(null);
+    setError(message);
+  }, []);
+
   useEffect(() => {
     const savedSecret = window.sessionStorage.getItem(SECRET_STORAGE_KEY) ?? "";
     if (savedSecret) {
       setSecretInput(savedSecret);
-      setAdminSecret(savedSecret);
     }
   }, []);
 
-  const fetchWallets = useCallback(async () => {
-    if (!adminSecret) return;
+  const fetchWallets = useCallback(
+    async (secretOverride?: string) => {
+      const activeSecret = secretOverride ?? adminSecret;
+      if (!activeSecret) return false;
 
-    setLoading(true);
-    setError("");
+      setLoading(true);
+      setError("");
 
-    try {
-      const response = await fetch("/api/admin/wallets", {
-        headers: {
-          Authorization: `Bearer ${adminSecret}`,
-        },
-        cache: "no-store",
-      });
+      try {
+        const response = await fetch("/api/admin/wallets", {
+          headers: {
+            Authorization: `Bearer ${activeSecret}`,
+          },
+          cache: "no-store",
+        });
 
-      if (response.status === 401) {
-        throw new Error("Wrong admin secret.");
+        if (response.status === 401) {
+          lockAdmin("Wrong admin secret. Access was locked.");
+          return false;
+        }
+
+        if (response.status === 403) {
+          setWallets([]);
+          setStep("code");
+          setError("Email verification is required before opening admin data.");
+          return false;
+        }
+
+        if (!response.ok) {
+          throw new Error(await readError(response, "Could not load admin data."));
+        }
+
+        const payload = (await response.json()) as AdminWalletsPayload;
+        setWallets(payload.data.wallets);
+        setStep("dashboard");
+        setLastUpdated(new Date().toISOString());
+        return true;
+      } catch (loadError) {
+        setWallets([]);
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Could not load admin data.",
+        );
+        return false;
+      } finally {
+        setLoading(false);
       }
-
-      if (!response.ok) {
-        throw new Error("Could not load admin data.");
-      }
-
-      const payload = (await response.json()) as AdminWalletsPayload;
-      setWallets(payload.data.wallets);
-      setLastUpdated(new Date().toISOString());
-    } catch (loadError) {
-      setWallets([]);
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Could not load admin data.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [adminSecret]);
+    },
+    [adminSecret, lockAdmin],
+  );
 
   useEffect(() => {
-    void fetchWallets();
-  }, [fetchWallets]);
-
-  useEffect(() => {
-    if (!adminSecret) return;
+    if (step !== "dashboard" || !adminSecret) return;
 
     const intervalId = window.setInterval(() => {
       void fetchWallets();
     }, AUTO_REFRESH_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [adminSecret, fetchWallets]);
+  }, [adminSecret, fetchWallets, step]);
 
   const filteredWallets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -161,24 +202,105 @@ export function AdminDashboard() {
       .filter((device): device is string => Boolean(device)),
   ).size;
 
-  function handleUnlock() {
+  async function handleRequestCode() {
     const normalizedSecret = secretInput.trim();
     if (!normalizedSecret) {
       setError("Enter ADMIN_API_SECRET first.");
       return;
     }
 
-    window.sessionStorage.setItem(SECRET_STORAGE_KEY, normalizedSecret);
-    setAdminSecret(normalizedSecret);
+    setRequestingCode(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/admin/request-code", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${normalizedSecret}`,
+        },
+        cache: "no-store",
+      });
+
+      if (response.status === 401) {
+        lockAdmin("Wrong admin secret. Access was locked.");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          await readError(response, "Could not send the admin email code."),
+        );
+      }
+
+      const payload = (await response.json()) as {
+        data?: { email?: string };
+      };
+
+      window.sessionStorage.setItem(SECRET_STORAGE_KEY, normalizedSecret);
+      setAdminSecret(normalizedSecret);
+      setMaskedEmail(payload.data?.email ?? "admin email");
+      setCodeInput("");
+      setStep("code");
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not send the admin email code.",
+      );
+    } finally {
+      setRequestingCode(false);
+    }
   }
 
-  function handleLock() {
-    window.sessionStorage.removeItem(SECRET_STORAGE_KEY);
-    setSecretInput("");
-    setAdminSecret("");
-    setWallets([]);
+  async function handleVerifyCode() {
+    const activeSecret = adminSecret || secretInput.trim();
+    if (!activeSecret) {
+      setStep("locked");
+      setError("Enter ADMIN_API_SECRET first.");
+      return;
+    }
+
+    setVerifyingCode(true);
     setError("");
-    setLastUpdated(null);
+
+    try {
+      const response = await fetch("/api/admin/verify-code", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${activeSecret}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: codeInput.trim() }),
+        cache: "no-store",
+      });
+
+      if (response.status === 401) {
+        const message = await readError(response, "Wrong or expired admin code.");
+        if (message === "Unauthorized") {
+          lockAdmin("Wrong admin secret. Access was locked.");
+          return;
+        }
+
+        throw new Error(message);
+      }
+
+      if (!response.ok) {
+        throw new Error(await readError(response, "Could not verify admin code."));
+      }
+
+      setAdminSecret(activeSecret);
+      window.sessionStorage.setItem(SECRET_STORAGE_KEY, activeSecret);
+      setCodeInput("");
+      await fetchWallets(activeSecret);
+    } catch (verifyError) {
+      setError(
+        verifyError instanceof Error
+          ? verifyError.message
+          : "Could not verify admin code.",
+      );
+    } finally {
+      setVerifyingCode(false);
+    }
   }
 
   async function handleCopy(value: string, label: string) {
@@ -211,67 +333,142 @@ export function AdminDashboard() {
                 Wallet Registry
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-[#7a8faa]">
-                Email, wallet address, last device and login time for airdrops
-                and support checks.
+                Protected by admin secret and email code. Wallet data stays hidden
+                until both checks pass.
               </p>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => void fetchWallets()}
-                disabled={!adminSecret || loading}
-                className="min-h-11 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 text-sm font-semibold text-white transition hover:border-accent-500/60 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading ? "Refreshing..." : "Refresh"}
-              </button>
-              <button
-                type="button"
-                onClick={handleExportCsv}
-                disabled={filteredWallets.length === 0}
-                className="min-h-11 rounded-2xl bg-accent-500 px-4 text-sm font-semibold text-white transition hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Export CSV
-              </button>
-            </div>
+            {step === "dashboard" && (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => void fetchWallets()}
+                  disabled={loading}
+                  className="min-h-11 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 text-sm font-semibold text-white transition hover:border-accent-500/60 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? "Refreshing..." : "Refresh"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportCsv}
+                  disabled={filteredWallets.length === 0}
+                  className="min-h-11 rounded-2xl bg-accent-500 px-4 text-sm font-semibold text-white transition hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Export CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => lockAdmin()}
+                  className="min-h-11 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 text-sm font-semibold text-red-100 transition hover:bg-red-500/15"
+                >
+                  Lock
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
-        {!adminSecret ? (
+        {step !== "dashboard" && (
           <section className="rounded-[2rem] border border-white/[0.07] bg-[#0f1825] p-5 shadow-xl shadow-black/20 sm:p-6">
-            <label
-              htmlFor="admin-secret"
-              className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5d7ab8]"
-            >
-              ADMIN_API_SECRET
-            </label>
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-              <input
-                id="admin-secret"
-                type="password"
-                autoComplete="off"
-                value={secretInput}
-                onChange={(event) => setSecretInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") handleUnlock();
-                }}
-                placeholder="Paste admin secret"
-                className="min-h-12 flex-1 rounded-2xl border border-white/[0.08] bg-dark-900 px-4 text-white outline-none transition placeholder:text-gray-600 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
-              />
-              <button
-                type="button"
-                onClick={handleUnlock}
-                className="min-h-12 rounded-2xl bg-accent-500 px-6 text-sm font-semibold text-white transition hover:bg-accent-600"
-              >
-                Open admin
-              </button>
-            </div>
-            <p className="mt-3 text-xs leading-5 text-[#7a8faa]">
-              The secret stays in this browser tab session. It is never saved in
-              the app code.
-            </p>
+            {step === "locked" ? (
+              <>
+                <label
+                  htmlFor="admin-secret"
+                  className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5d7ab8]"
+                >
+                  ADMIN_API_SECRET
+                </label>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                  <input
+                    id="admin-secret"
+                    type="password"
+                    autoComplete="off"
+                    value={secretInput}
+                    onChange={(event) => setSecretInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void handleRequestCode();
+                    }}
+                    placeholder="Paste admin secret"
+                    className="min-h-12 flex-1 rounded-2xl border border-white/[0.08] bg-dark-900 px-4 text-white outline-none transition placeholder:text-gray-600 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleRequestCode()}
+                    disabled={requestingCode}
+                    className="min-h-12 rounded-2xl bg-accent-500 px-6 text-sm font-semibold text-white transition hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {requestingCode ? "Sending code..." : "Send email code"}
+                  </button>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-[#7a8faa]">
+                  Wrong secrets immediately clear the admin session. Wallet data is
+                  not loaded until email verification succeeds.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#5d7ab8]">
+                  Email verification
+                </p>
+                <h2 className="mt-2 text-2xl font-bold">Enter admin code</h2>
+                <p className="mt-2 text-sm leading-6 text-[#7a8faa]">
+                  We sent a one-time code to {maskedEmail || "your admin email"}.
+                  It expires in 10 minutes.
+                </p>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={codeInput}
+                    onChange={(event) =>
+                      setCodeInput(event.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") void handleVerifyCode();
+                    }}
+                    placeholder="000000"
+                    className="min-h-12 flex-1 rounded-2xl border border-white/[0.08] bg-dark-900 px-4 text-center text-xl font-bold tracking-[0.35em] text-white outline-none transition placeholder:text-gray-600 focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleVerifyCode()}
+                    disabled={verifyingCode || codeInput.length !== 6}
+                    className="min-h-12 rounded-2xl bg-accent-500 px-6 text-sm font-semibold text-white transition hover:bg-accent-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {verifyingCode ? "Checking..." : "Open admin"}
+                  </button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-3 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => void handleRequestCode()}
+                    disabled={requestingCode}
+                    className="font-semibold text-accent-300 transition hover:text-accent-200 disabled:opacity-50"
+                  >
+                    {requestingCode ? "Sending..." : "Send a new code"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => lockAdmin()}
+                    className="font-semibold text-red-200 transition hover:text-red-100"
+                  >
+                    Clear and lock
+                  </button>
+                </div>
+              </>
+            )}
+
+            {error && (
+              <div className="mt-4 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                {error}
+              </div>
+            )}
           </section>
-        ) : (
+        )}
+
+        {step === "dashboard" && (
           <>
             <section className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-3xl border border-white/[0.07] bg-[#0f1825] p-4">
@@ -306,20 +503,9 @@ export function AdminDashboard() {
                   />
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-[#7a8faa]">
-                  <span>
-                    Auto-refresh: {AUTO_REFRESH_MS / 1000}s
-                  </span>
+                  <span>Auto-refresh: {AUTO_REFRESH_MS / 1000}s</span>
                   <span className="hidden h-1 w-1 rounded-full bg-[#3d5070] sm:block" />
-                  <span>
-                    Updated: {formatDate(lastUpdated)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleLock}
-                    className="ml-auto min-h-9 rounded-xl border border-red-500/25 bg-red-500/10 px-3 font-semibold text-red-200 transition hover:bg-red-500/15 lg:ml-2"
-                  >
-                    Lock
-                  </button>
+                  <span>Updated: {formatDate(lastUpdated)}</span>
                 </div>
               </div>
 
@@ -404,10 +590,7 @@ export function AdminDashboard() {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  void handleCopy(
-                                    wallet.walletPublicKey!,
-                                    "wallet",
-                                  )
+                                  void handleCopy(wallet.walletPublicKey!, "wallet")
                                 }
                                 className="min-h-9 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 text-xs font-semibold text-white transition hover:border-accent-500/60"
                               >

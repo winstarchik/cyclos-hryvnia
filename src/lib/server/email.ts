@@ -64,3 +64,20 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
     to,
   });
 }
+
+export async function sendAdminCodeEmail(to: string, code: string) {
+  const smtp = getSmtpConfig();
+  const title = "Confirm Cyclos admin access";
+
+  await createTransporter().sendMail({
+    from: smtp.from,
+    html: emailShell(`
+      <p style="margin:0 0 20px;color:#c7d2fe">Someone is trying to open the Cyclos admin panel. Enter this code to continue:</p>
+      <div style="font-size:32px;letter-spacing:8px;font-weight:700;background:#131a3a;border-radius:12px;padding:18px 22px;display:inline-block">${code}</div>
+      <p style="margin:20px 0 0;color:#94a3b8;font-size:14px">The code expires in 10 minutes. If this was not you, rotate ADMIN_API_SECRET immediately.</p>
+    `),
+    subject: title,
+    text: `${title}. Your Cyclos admin code is ${code}. It expires in 10 minutes.`,
+    to,
+  });
+}

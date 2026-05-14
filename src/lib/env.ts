@@ -92,6 +92,10 @@ export function getAdminApiSecret(): string | undefined {
   return process.env.ADMIN_API_SECRET;
 }
 
+export function getAdminEmail(): string | undefined {
+  return process.env.ADMIN_EMAIL?.trim() || process.env.SMTP_USER?.trim();
+}
+
 export function getSmtpConfig() {
   const host = process.env.SMTP_HOST;
   const port = process.env.SMTP_PORT;
