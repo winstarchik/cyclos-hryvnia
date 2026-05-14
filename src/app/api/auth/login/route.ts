@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const otpResult = verifyOtpToken(
+    const otpResult = await verifyOtpToken(
       getOtpTokenFromRequest(request),
       email,
       code,

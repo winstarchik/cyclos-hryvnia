@@ -62,7 +62,6 @@
     "emailAccountExists": "An account with this email already exists. Sign in instead.",
     "authDependencyError": "Account security is temporarily unavailable. Please try again shortly.",
     "emailDeliveryUnavailable": "Email delivery is temporarily unavailable. Please try again shortly.",
-    "developmentEmailCode": "Development email code: {code}",
     "finishRegistration": "Create account",
     "forgotPassword": "Forgot password?",
     "forgotPasswordTitle": "Recover password",

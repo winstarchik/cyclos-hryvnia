@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!verifyAdminOtpToken(getAdminOtpFromRequest(request), code)) {
+  if (!(await verifyAdminOtpToken(getAdminOtpFromRequest(request), code))) {
     return NextResponse.json(
       { error: "Wrong or expired admin code" },
       { status: 401 },
@@ -61,4 +61,3 @@ export async function POST(request: NextRequest) {
 
   return response;
 }
-

@@ -1,6 +1,7 @@
-import { createHash, createHmac, randomInt, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSecret } from "@/lib/env";
+import { consumeOneTimeToken } from "@/lib/server/oneTimeTokens";
 
 export const OTP_COOKIE_NAME = "cyclos_email_otp";
 const OTP_TTL_SECONDS = 60 * 10;
@@ -8,6 +9,7 @@ const OTP_TTL_SECONDS = 60 * 10;
 export type OtpPurpose = "login" | "register";
 
 interface OtpPayload {
+  jti: string;
   email: string;
   purpose: OtpPurpose;
   codeHash: string;
@@ -38,6 +40,7 @@ export function createOtpToken(
   const payload: OtpPayload = {
     codeHash: hashCode(email, code),
     email: email.trim().toLowerCase(),
+    jti: randomUUID(),
     purpose,
     exp: Math.floor(Date.now() / 1000) + OTP_TTL_SECONDS,
   };
@@ -47,7 +50,7 @@ export function createOtpToken(
   return `${encodedPayload}.${signature}`;
 }
 
-export function verifyOtpToken(
+export async function verifyOtpToken(
   token: string | undefined,
   email: string,
   code: string,
@@ -80,6 +83,10 @@ export function verifyOtpToken(
       return { ok: false, reason: "expired" as const };
     }
 
+    if (!payload.jti) {
+      return { ok: false, reason: "invalid" as const };
+    }
+
     if (payload.email !== normalizedEmail) {
       return { ok: false, reason: "invalid" as const };
     }
@@ -96,6 +103,16 @@ export function verifyOtpToken(
       !timingSafeEqual(incomingHash, storedHash)
     ) {
       return { ok: false, reason: "invalid" as const };
+    }
+
+    const consumed = await consumeOneTimeToken(
+      payload.jti,
+      `email-otp:${payload.purpose}`,
+      payload.exp,
+    );
+
+    if (!consumed) {
+      return { ok: false, reason: "consumed" as const };
     }
 
     return { ok: true, email: normalizedEmail } as const;

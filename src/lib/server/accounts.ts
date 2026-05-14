@@ -129,7 +129,7 @@ function getPool() {
     connectionString: databaseUrl,
     ssl: databaseUrl.includes("localhost")
       ? false
-      : { rejectUnauthorized: false },
+      : { rejectUnauthorized: true },
   });
 
   return pool;

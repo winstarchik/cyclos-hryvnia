@@ -62,7 +62,6 @@
     "emailAccountExists": "Аккаунт с этим email уже существует. Войдите вместо регистрации.",
     "authDependencyError": "Проверка аккаунта временно недоступна. Попробуйте еще раз.",
     "emailDeliveryUnavailable": "Доставка email-кода временно недоступна. Попробуйте еще раз.",
-    "developmentEmailCode": "Код для локального теста: {code}",
     "finishRegistration": "Создать аккаунт",
     "forgotPassword": "Забыли пароль?",
     "forgotPasswordTitle": "Восстановление пароля",

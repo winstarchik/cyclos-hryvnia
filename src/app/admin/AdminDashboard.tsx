@@ -23,7 +23,6 @@ interface AdminWalletsPayload {
 
 type AdminStep = "locked" | "code" | "dashboard";
 
-const SECRET_STORAGE_KEY = "cyclos:admin-secret";
 const AUTO_REFRESH_MS = 30_000;
 
 function shortAddress(address: string | null) {
@@ -82,7 +81,6 @@ async function readError(response: Response, fallback: string) {
 export function AdminDashboard() {
   const [step, setStep] = useState<AdminStep>("locked");
   const [secretInput, setSecretInput] = useState("");
-  const [adminSecret, setAdminSecret] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [maskedEmail, setMaskedEmail] = useState("");
   const [wallets, setWallets] = useState<AdminWallet[]>([]);
@@ -95,11 +93,9 @@ export function AdminDashboard() {
   const [copied, setCopied] = useState<string | null>(null);
 
   const lockAdmin = useCallback((message = "") => {
-    window.sessionStorage.removeItem(SECRET_STORAGE_KEY);
     void fetch("/api/admin/session", { method: "DELETE" });
     setStep("locked");
     setSecretInput("");
-    setAdminSecret("");
     setCodeInput("");
     setMaskedEmail("");
     setWallets([]);
@@ -109,38 +105,20 @@ export function AdminDashboard() {
     setError(message);
   }, []);
 
-  useEffect(() => {
-    const savedSecret = window.sessionStorage.getItem(SECRET_STORAGE_KEY) ?? "";
-    if (savedSecret) {
-      setSecretInput(savedSecret);
-    }
-  }, []);
-
   const fetchWallets = useCallback(
-    async (secretOverride?: string) => {
-      const activeSecret = secretOverride ?? adminSecret;
-      if (!activeSecret) return false;
-
+    async () => {
       setLoading(true);
       setError("");
 
       try {
         const response = await fetch("/api/admin/wallets", {
-          headers: {
-            Authorization: `Bearer ${activeSecret}`,
-          },
           cache: "no-store",
         });
 
-        if (response.status === 401) {
-          lockAdmin("Wrong admin secret. Access was locked.");
-          return false;
-        }
-
         if (response.status === 403) {
           setWallets([]);
-          setStep("code");
-          setError("Email verification is required before opening admin data.");
+          setStep("locked");
+          setError("");
           return false;
         }
 
@@ -165,18 +143,22 @@ export function AdminDashboard() {
         setLoading(false);
       }
     },
-    [adminSecret, lockAdmin],
+    [],
   );
 
   useEffect(() => {
-    if (step !== "dashboard" || !adminSecret) return;
+    void fetchWallets();
+  }, [fetchWallets]);
+
+  useEffect(() => {
+    if (step !== "dashboard") return;
 
     const intervalId = window.setInterval(() => {
       void fetchWallets();
     }, AUTO_REFRESH_MS);
 
     return () => window.clearInterval(intervalId);
-  }, [adminSecret, fetchWallets, step]);
+  }, [fetchWallets, step]);
 
   const filteredWallets = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -236,8 +218,6 @@ export function AdminDashboard() {
         data?: { email?: string };
       };
 
-      window.sessionStorage.setItem(SECRET_STORAGE_KEY, normalizedSecret);
-      setAdminSecret(normalizedSecret);
       setMaskedEmail(payload.data?.email ?? "admin email");
       setCodeInput("");
       setStep("code");
@@ -253,7 +233,7 @@ export function AdminDashboard() {
   }
 
   async function handleVerifyCode() {
-    const activeSecret = adminSecret || secretInput.trim();
+    const activeSecret = secretInput.trim();
     if (!activeSecret) {
       setStep("locked");
       setError("Enter ADMIN_API_SECRET first.");
@@ -288,10 +268,9 @@ export function AdminDashboard() {
         throw new Error(await readError(response, "Could not verify admin code."));
       }
 
-      setAdminSecret(activeSecret);
-      window.sessionStorage.setItem(SECRET_STORAGE_KEY, activeSecret);
+      setSecretInput("");
       setCodeInput("");
-      await fetchWallets(activeSecret);
+      await fetchWallets();
     } catch (verifyError) {
       setError(
         verifyError instanceof Error

@@ -1,6 +1,7 @@
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminApiSecret, getAdminEmail, getAuthSecret } from "@/lib/env";
+import { consumeOneTimeToken } from "@/lib/server/oneTimeTokens";
 
 export const ADMIN_OTP_COOKIE_NAME = "cyclos_admin_otp";
 export const ADMIN_SESSION_COOKIE_NAME = "cyclos_admin_session";
@@ -12,6 +13,7 @@ const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 interface AdminOtpPayload {
   ver: typeof ADMIN_TOKEN_VERSION;
+  jti: string;
   email: string;
   nonce: string;
   codeHash: string;
@@ -122,6 +124,7 @@ export function createAdminOtpToken(email: string, code: string) {
   const payload: AdminOtpPayload = {
     ver: ADMIN_TOKEN_VERSION,
     email: normalizedEmail,
+    jti: randomUUID(),
     nonce,
     codeHash: hashAdminCode(normalizedEmail, code, nonce),
     exp: Math.floor(Date.now() / 1000) + ADMIN_OTP_TTL_SECONDS,
@@ -130,18 +133,23 @@ export function createAdminOtpToken(email: string, code: string) {
   return encodeSignedPayload(payload);
 }
 
-export function verifyAdminOtpToken(token: string | undefined, code: string) {
+export async function verifyAdminOtpToken(token: string | undefined, code: string) {
   const payload = decodeSignedPayload<AdminOtpPayload>(token);
   const adminEmail = getConfiguredAdminEmail();
 
   if (!payload || !adminEmail || payload.ver !== ADMIN_TOKEN_VERSION) return false;
+  if (!payload.jti) return false;
   if (payload.email !== adminEmail) return false;
   if (payload.exp < Math.floor(Date.now() / 1000)) return false;
 
-  return safeCompare(
+  const codeMatches = safeCompare(
     hashAdminCode(payload.email, code, payload.nonce),
     payload.codeHash,
   );
+
+  if (!codeMatches) return false;
+
+  return consumeOneTimeToken(payload.jti, "admin-otp", payload.exp);
 }
 
 export function createAdminSessionToken() {
@@ -226,4 +234,3 @@ export function clearAdminSessionCookies(response: NextResponse) {
 
   return response;
 }
-

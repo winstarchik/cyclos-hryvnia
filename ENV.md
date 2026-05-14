@@ -22,6 +22,7 @@ This project uses public browser-safe variables for wallet and RPC setup, and se
 ## Server-Only Variables
 
 - `TELEGRAM_BOT_TOKEN`: Telegram bot token. Never prefix this with `NEXT_PUBLIC_`.
+- `TELEGRAM_WEBHOOK_SECRET`: Secret token passed to Telegram `setWebhook` and checked on every webhook POST.
 - `AUTH_SECRET`: Long random secret used to sign the HttpOnly app session cookie.
 - `ADMIN_API_SECRET`: Optional bearer token for protected admin wallet exports and the `/admin` dashboard.
 - `ADMIN_EMAIL`: Email address that receives the second-factor code for `/admin`. If omitted, the app falls back to `SMTP_USER`.
@@ -54,6 +55,7 @@ NEXT_PUBLIC_WEB3AUTH_EMAIL_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 TELEGRAM_BOT_TOKEN=TEST_BOT_TOKEN
+TELEGRAM_WEBHOOK_SECRET=replace-with-a-long-random-webhook-secret
 AUTH_SECRET=replace-with-a-long-random-local-secret
 ADMIN_API_SECRET=replace-with-a-long-random-admin-secret
 ADMIN_EMAIL=admin@example.com
@@ -90,6 +92,7 @@ NEXT_PUBLIC_WEB3AUTH_GOOGLE_GROUPED_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=...
+TELEGRAM_WEBHOOK_SECRET=...
 AUTH_SECRET=...
 ADMIN_API_SECRET=...
 ADMIN_EMAIL=...

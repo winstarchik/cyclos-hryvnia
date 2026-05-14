@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,28 @@ async function sendTelegramMessage(chatId: number) {
   });
 }
 
+function safeCompare(left: string, right: string) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+
+  return (
+    leftBuffer.length === rightBuffer.length &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
+}
+
+function isValidTelegramWebhookSecret(request: NextRequest) {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!secret) {
+    return process.env.NODE_ENV !== "production";
+  }
+
+  return safeCompare(
+    request.headers.get("x-telegram-bot-api-secret-token") ?? "",
+    secret,
+  );
+}
+
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -66,6 +89,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isValidTelegramWebhookSecret(request)) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
   try {
     const update = (await request.json()) as TelegramUpdate;
     const chatId = update.message?.chat?.id;

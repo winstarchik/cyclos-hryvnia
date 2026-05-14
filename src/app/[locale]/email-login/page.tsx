@@ -16,7 +16,6 @@ interface AuthApiResponse {
   status: "ok" | "error";
   error?: string;
   data?: {
-    devCode?: string;
     maskedEmail?: string;
     user?: {
       email?: string;
@@ -76,7 +75,6 @@ export default function EmailLoginPage() {
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [devCode, setDevCode] = useState("");
   const [maskedEmail, setMaskedEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
@@ -111,7 +109,6 @@ export default function EmailLoginPage() {
     setCode("");
     setPassword("");
     setConfirmPassword("");
-    setDevCode("");
     setMaskedEmail("");
     setLocalErrorKey(null);
     clearError();
@@ -156,7 +153,6 @@ export default function EmailLoginPage() {
       }
 
       setMaskedEmail(payload.data?.maskedEmail ?? trimmedEmail);
-      setDevCode(payload.data?.devCode ?? "");
       setCode("");
       setStep("code");
     } finally {
@@ -333,11 +329,6 @@ export default function EmailLoginPage() {
 
             {step === "code" ? (
               <div className="space-y-3" aria-busy={isLoading} aria-live="polite">
-                {devCode ? (
-                  <p className="rounded-2xl border border-accent-500/25 bg-accent-500/10 px-4 py-3 text-sm leading-6 text-accent-100">
-                    {t("developmentEmailCode", { code: devCode })}
-                  </p>
-                ) : null}
                 <label
                   className="block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500"
                   htmlFor={codeInputId}

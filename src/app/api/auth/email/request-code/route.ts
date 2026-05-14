@@ -112,17 +112,7 @@ export async function POST(request: NextRequest) {
     if (process.env.NODE_ENV !== "production") {
       console.error("Email code request failed:", error);
 
-      if (isMissingSmtpConfig(error)) {
-        const response = NextResponse.json({
-          status: "ok",
-          data: {
-            devCode: code,
-            maskedEmail: maskEmail(email),
-          },
-        });
-
-        return attachOtpCookie(response, createOtpToken(email, code, mode));
-      }
+      // Never return OTP codes in API responses, even in development.
     }
 
     return authError(

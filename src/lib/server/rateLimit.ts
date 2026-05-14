@@ -31,10 +31,12 @@ export function checkRateLimit(
 }
 
 export function getRateLimitKey(request: Request, email: string) {
+  const vercelForwardedFor = request.headers.get("x-vercel-forwarded-for");
   const forwardedFor = request.headers.get("x-forwarded-for");
   const ip =
-    forwardedFor?.split(",")[0]?.trim() ??
+    vercelForwardedFor?.split(",")[0]?.trim() ??
     request.headers.get("x-real-ip") ??
+    forwardedFor?.split(",")[0]?.trim() ??
     "unknown";
 
   return `${ip}:${email.trim().toLowerCase()}`;
