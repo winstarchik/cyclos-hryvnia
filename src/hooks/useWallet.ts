@@ -69,6 +69,40 @@ const SOCIAL_GROUPED_AUTH_CONNECTION_IDS = {
 
 const WEB3AUTH_CONNECT_TIMEOUT_MS = 30_000;
 
+function getSimulationLogsText(logs?: string[] | null) {
+  return logs?.join("\n") ?? "";
+}
+
+function getSimulationFailureCode(error: unknown, logs?: string[] | null) {
+  const message = `${JSON.stringify(error ?? "")}\n${getSimulationLogsText(logs)}`;
+
+  if (/insufficient lamports|insufficient funds|attempt to debit/i.test(message)) {
+    return "SIMULATION_SOL_FEE_REQUIRED";
+  }
+
+  return "TRANSACTION_SIMULATION_FAILED";
+}
+
+async function assertSimulationPasses(
+  activeConnection: Connection,
+  transaction: SolanaTransaction | VersionedTransaction,
+) {
+  const result =
+    "version" in transaction
+      ? await activeConnection.simulateTransaction(transaction, {
+          commitment: "confirmed",
+          replaceRecentBlockhash: false,
+          sigVerify: true,
+        })
+      : await activeConnection.simulateTransaction(transaction);
+
+  if (result.value.err) {
+    throw new Error(
+      getSimulationFailureCode(result.value.err, result.value.logs),
+    );
+  }
+}
+
 function openWeb3AuthWalletPicker() {
   if (typeof window === "undefined") return;
 
@@ -437,6 +471,8 @@ export function useWallet(): UseWalletResult {
           transaction.sign(keypair);
         }
 
+        await assertSimulationPasses(activeConnection, transaction);
+
         return activeConnection.sendRawTransaction(transaction.serialize(), {
           maxRetries: 3,
           skipPreflight: false,
@@ -450,18 +486,23 @@ export function useWallet(): UseWalletResult {
           throw new Error(INJECTED_SOLANA_WALLET_NOT_FOUND);
         }
 
+        if (injectedWallet.provider.signTransaction) {
+          const signedTransaction =
+            await injectedWallet.provider.signTransaction(transaction);
+          await assertSimulationPasses(activeConnection, signedTransaction);
+          return activeConnection.sendRawTransaction(
+            signedTransaction.serialize(),
+            {
+              maxRetries: 3,
+              skipPreflight: false,
+            },
+          );
+        }
+
         if (injectedWallet.provider.signAndSendTransaction) {
           const result =
             await injectedWallet.provider.signAndSendTransaction(transaction);
           return typeof result === "string" ? result : result.signature;
-        }
-
-        if (injectedWallet.provider.signTransaction) {
-          const signedTransaction =
-            await injectedWallet.provider.signTransaction(transaction);
-          return activeConnection.sendRawTransaction(
-            signedTransaction.serialize(),
-          );
         }
       }
 

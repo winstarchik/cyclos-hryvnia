@@ -74,7 +74,10 @@
     "saveNewPassword": "Save new password",
     "invalidResetLink": "This reset link is invalid or expired.",
     "passwordResetSendError": "We could not send the recovery link. Please try again shortly.",
-    "passwordResetError": "We could not update your password. Please try again shortly."
+    "passwordResetError": "We could not update your password. Please try again shortly.",
+    "passwordResetSuccessTitle": "Password updated",
+    "passwordResetSuccessHint": "Your account password was updated. You can continue to your wallet.",
+    "walletPasswordRecoveryHint": "Your account password was updated. Your existing Cyclos wallet is still encrypted with the old wallet password. Use that old password once when sending, then keep it safe. Without the old wallet password, the previous wallet cannot be recovered."
   },
   "wallet": {
     "title": "Your Wallet",

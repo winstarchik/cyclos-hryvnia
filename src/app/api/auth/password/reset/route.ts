@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isValidAuthPassword } from "@/lib/server/authInput";
 import {
   findUserByEmail,
+  getUserEncryptedWallet,
   recordUserLogin,
   updateUserPassword,
 } from "@/lib/server/accounts";
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const existingWallet = await getUserEncryptedWallet(user.email);
     const { passwordHash, passwordSalt } = await hashPassword(password);
     const updatedUser = await updateUserPassword(
       user.email,
@@ -97,6 +99,7 @@ export async function POST(request: NextRequest) {
           id: updatedUser.id,
           email: updatedUser.email,
         },
+        walletRecoveryRequired: Boolean(existingWallet),
       },
     });
 

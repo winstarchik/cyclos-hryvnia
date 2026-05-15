@@ -12,6 +12,7 @@ interface ApiResponse {
   status: "ok" | "error";
   error?: string;
   data?: {
+    walletRecoveryRequired?: boolean;
     user?: {
       email?: string;
     };
@@ -40,6 +41,8 @@ export default function ResetPasswordPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [resetCompleted, setResetCompleted] = useState(false);
+  const [walletRecoveryRequired, setWalletRecoveryRequired] = useState(false);
   const [localErrorKey, setLocalErrorKey] = useState<string | null>(
     null,
   );
@@ -92,6 +95,13 @@ export default function ResetPasswordPage() {
       if (email) {
         setEmailPasswordSession(email);
       }
+      if (payload.data?.walletRecoveryRequired) {
+        setWalletRecoveryRequired(true);
+        setResetCompleted(true);
+        setPassword("");
+        setConfirmPassword("");
+        return;
+      }
       router.replace(`/${locale}/wallet`);
     } finally {
       setIsLoading(false);
@@ -113,6 +123,32 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className="cy-card-soft p-4 sm:p-5">
+            {resetCompleted ? (
+              <div className="space-y-4 text-center" aria-live="polite">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-500/15 text-2xl text-accent-300">
+                  ✓
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">
+                    {t("passwordResetSuccessTitle")}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-gray-400">
+                    {walletRecoveryRequired
+                      ? t("walletPasswordRecoveryHint")
+                      : t("passwordResetSuccessHint")}
+                  </p>
+                </div>
+                <Button
+                  className="h-12 rounded-2xl text-sm"
+                  fullWidth
+                  onClick={() => router.replace(`/${locale}/wallet`)}
+                  size="md"
+                  type="button"
+                >
+                  {t("continueButton")}
+                </Button>
+              </div>
+            ) : (
             <div className="space-y-3" aria-busy={isLoading} aria-live="polite">
               <label
                 className="block text-xs font-semibold uppercase tracking-[0.16em] text-gray-500"
@@ -175,6 +211,7 @@ export default function ResetPasswordPage() {
                 {t("saveNewPassword")}
               </Button>
             </div>
+            )}
 
             {localErrorKey ? (
               <p

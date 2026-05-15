@@ -278,7 +278,7 @@ function readErrorMessage(error: unknown): string {
 }
 
 function isSolFeeShortage(message: string): boolean {
-  return /insufficient lamports|lamports.*need|need \d+|insufficient funds|attempt to debit/i.test(
+  return /SIMULATION_SOL_FEE_REQUIRED|insufficient lamports|lamports.*need|need \d+|insufficient funds|attempt to debit/i.test(
     message,
   );
 }
@@ -726,7 +726,7 @@ export default function SendPage() {
         return t("solTopUpRequired");
       }
 
-      if (/simulation failed|transaction simulation failed/i.test(message)) {
+      if (/TRANSACTION_SIMULATION_FAILED|simulation failed|transaction simulation failed/i.test(message)) {
         return t("simulationFailed");
       }
 
