@@ -72,7 +72,12 @@ function formatDayGroup(timestamp: number, locale: string): string {
 
 function formatAmount(transaction: Transaction): string {
   const prefix = transaction.type === "receive" ? "+" : transaction.type === "swap" ? "" : "-";
-  return `${prefix}${transaction.amount.toFixed(4)} ${transaction.token.symbol}`;
+  const maxDecimals = transaction.token.symbol === "SOL" ? 6 : 4;
+  const amount = transaction.amount
+    .toFixed(maxDecimals)
+    .replace(/\.?0+$/, "");
+
+  return `${prefix}${amount || "0"} ${transaction.token.symbol}`;
 }
 
 function TransactionHistorySkeleton() {
