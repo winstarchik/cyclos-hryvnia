@@ -115,6 +115,119 @@ function getTokenAccountMeta(tx: ParsedTransactionWithMeta) {
 
 // ─── Detect DEX involvement ───────────────────────────────────────────────────
 
+function findTokenCounterparty(
+  tx: ParsedTransactionWithMeta,
+  myAddress: string,
+  mint: string,
+  type: "send" | "receive",
+): string {
+  const owners = new Map<string, { post: number; pre: number }>();
+
+  for (const balance of tx.meta?.preTokenBalances ?? []) {
+    if (!balance.owner || balance.owner === myAddress || balance.mint !== mint) {
+      continue;
+    }
+
+    owners.set(balance.owner, {
+      post: 0,
+      pre: balance.uiTokenAmount.uiAmount ?? 0,
+    });
+  }
+
+  for (const balance of tx.meta?.postTokenBalances ?? []) {
+    if (!balance.owner || balance.owner === myAddress || balance.mint !== mint) {
+      continue;
+    }
+
+    const current = owners.get(balance.owner);
+    owners.set(balance.owner, {
+      post: balance.uiTokenAmount.uiAmount ?? 0,
+      pre: current?.pre ?? 0,
+    });
+  }
+
+  for (const [owner, amounts] of owners) {
+    const delta = amounts.post - amounts.pre;
+    if (
+      (type === "receive" && delta < 0) ||
+      (type === "send" && delta > 0)
+    ) {
+      return owner;
+    }
+  }
+
+  return "";
+}
+
+function parseTokenBalanceDelta(
+  tx: ParsedTransactionWithMeta,
+  myAddress: string,
+): AppTransaction | null {
+  const sig = tx.transaction.signatures[0];
+  const meta = tx.meta;
+  const blockTime = tx.blockTime;
+
+  if (!sig || !meta || !blockTime) return null;
+
+  const balances = new Map<
+    string,
+    { decimals: number; mint: string; post: number; pre: number }
+  >();
+
+  for (const balance of meta.preTokenBalances ?? []) {
+    if (balance.owner !== myAddress) continue;
+
+    balances.set(balance.mint, {
+      decimals: balance.uiTokenAmount.decimals,
+      mint: balance.mint,
+      post: 0,
+      pre: balance.uiTokenAmount.uiAmount ?? 0,
+    });
+  }
+
+  for (const balance of meta.postTokenBalances ?? []) {
+    if (balance.owner !== myAddress) continue;
+
+    const current = balances.get(balance.mint);
+    balances.set(balance.mint, {
+      decimals: balance.uiTokenAmount.decimals,
+      mint: balance.mint,
+      post: balance.uiTokenAmount.uiAmount ?? 0,
+      pre: current?.pre ?? 0,
+    });
+  }
+
+  const ownDelta = Array.from(balances.values())
+    .map((item) => ({ ...item, delta: item.post - item.pre }))
+    .filter((item) => item.delta !== 0)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))[0];
+
+  if (!ownDelta) return null;
+
+  const type: AppTransaction["type"] = ownDelta.delta > 0 ? "receive" : "send";
+  const amount = Math.abs(ownDelta.delta);
+  const tokenMeta = KNOWN_TOKENS[ownDelta.mint];
+  const token = buildToken(
+    ownDelta.mint,
+    tokenMeta?.symbol ?? "SPL",
+    tokenMeta?.decimals ?? ownDelta.decimals,
+  );
+  const counterparty = findTokenCounterparty(tx, myAddress, ownDelta.mint, type);
+
+  return {
+    id: sig,
+    hash: sig,
+    from: type === "send" ? myAddress : counterparty,
+    to: type === "receive" ? myAddress : counterparty,
+    type,
+    amount,
+    token,
+    valueUSD: tokenMeta?.fixedUSD !== undefined ? amount * tokenMeta.fixedUSD : 0,
+    timestamp: blockTime * 1_000,
+    status: meta.err ? "failed" : "success",
+  };
+}
+
 function isSwapTx(tx: ParsedTransactionWithMeta): boolean {
   return getAllInstructions(tx).some((ix) =>
     DEX_PROGRAMS.has(ix.programId.toBase58()),
@@ -188,6 +301,11 @@ function parseTx(
   }
 
   // ── SOL transfer (send / receive) ────────────────────────────────────────
+
+  const tokenBalanceDelta = parseTokenBalanceDelta(tx, myAddress);
+  if (tokenBalanceDelta) {
+    return tokenBalanceDelta;
+  }
 
   if (myIndex !== -1) {
     const pre = meta.preBalances[myIndex] ?? 0;
