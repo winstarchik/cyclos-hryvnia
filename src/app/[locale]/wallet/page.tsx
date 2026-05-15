@@ -38,6 +38,14 @@ function RowSkeleton({ count = 4 }: { count?: number }) {
 }
 
 /* ── Transaction row ───────────────────────────────────────── */
+function formatTxAmount(tx: Transaction): string {
+  const maxDecimals = tx.token.symbol === "SOL" ? 6 : 4;
+
+  return tx.amount
+    .toFixed(maxDecimals)
+    .replace(/\.?0+$/, "") || "0";
+}
+
 function TxRow({ tx, i }: { tx: Transaction; i: number }) {
   const isReceive = tx.type === "receive";
   const isSwap    = tx.type === "swap";
@@ -65,7 +73,7 @@ function TxRow({ tx, i }: { tx: Transaction; i: number }) {
           ${isReceive ? "text-green-400" : isSwap ? "text-accent-400" : "text-red-400"}`}
         >
           {isReceive ? "+" : isSwap ? "" : "−"}
-          {tx.amount.toFixed(4)} {tx.token.symbol}
+          {formatTxAmount(tx)} {tx.token.symbol}
         </p>
         <p className="mt-0.5 text-[12px] text-[#3d5070]">${tx.valueUSD.toFixed(2)}</p>
       </div>
