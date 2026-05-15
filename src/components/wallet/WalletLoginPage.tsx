@@ -233,6 +233,24 @@ function getLegalAgreementCopy(locale: string) {
   return LEGAL_AGREEMENT_COPY[locale] ?? LEGAL_AGREEMENT_COPY.en;
 }
 
+function useLoginVisualEffects() {
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(
+      "(min-width: 768px) and (hover: hover) and (prefers-reduced-motion: no-preference)",
+    );
+
+    const updateEnabled = () => setEnabled(mediaQuery.matches);
+    updateEnabled();
+
+    mediaQuery.addEventListener("change", updateEnabled);
+    return () => mediaQuery.removeEventListener("change", updateEnabled);
+  }, []);
+
+  return enabled;
+}
+
 function CUAHCoin() {
   return (
     <div
@@ -299,9 +317,11 @@ export function WalletLoginPage() {
   const [loadingAction, setLoadingAction] = useState<AuthAction | null>(null);
   const [localErrorKey, setLocalErrorKey] = useState<string | null>(null);
   const [showSlowConnection, setShowSlowConnection] = useState(false);
+  const visualEffectsEnabled = useLoginVisualEffects();
   const web3AuthConfigured = hasWeb3AuthClientId();
   const isConnecting = Boolean(loadingAction) || walletLoading;
   const isWalletModalActive = loadingAction === "wallet";
+  const showAnimatedVisuals = visualEffectsEnabled && !isWalletModalActive;
   const legalAgreementCopy = getLegalAgreementCopy(locale);
   const visibleErrorMessage = localErrorKey
     ? t(localErrorKey)
@@ -370,7 +390,11 @@ export function WalletLoginPage() {
   return (
     <main className="relative flex min-h-screen overflow-hidden bg-dark-950 px-4 py-8 text-white sm:px-6">
       <div aria-hidden="true" className="animate-gradient-shift absolute inset-0" />
-      {!isWalletModalActive ? (
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_14%,rgba(65,105,225,0.22),transparent_34%),radial-gradient(circle_at_0%_100%,rgba(107,143,255,0.12),transparent_36%)]"
+      />
+      {showAnimatedVisuals ? (
         <>
           <ParticleCanvas />
           <BigTokenLayer />
