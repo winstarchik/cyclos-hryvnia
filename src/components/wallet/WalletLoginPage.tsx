@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
+import { BigTokenLayer } from "@/components/visual/BigTokenLayer";
+import { FallingTokensCanvas } from "@/components/visual/FallingTokensCanvas";
+import { ParticleCanvas } from "@/components/visual/ParticleCanvas";
 import { useWallet } from "@/hooks/useWallet";
 import { hasWeb3AuthClientId } from "@/lib/env";
 import { INJECTED_SOLANA_WALLET_NOT_FOUND } from "@/lib/injectedSolana";
@@ -367,6 +370,17 @@ export function WalletLoginPage() {
   return (
     <main className="relative flex min-h-screen overflow-hidden bg-dark-950 px-4 py-8 text-white sm:px-6">
       <div aria-hidden="true" className="animate-gradient-shift absolute inset-0" />
+      {!isWalletModalActive ? (
+        <>
+          <ParticleCanvas />
+          <BigTokenLayer />
+          <FallingTokensCanvas />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(5,7,18,0.15),rgba(5,7,18,0.72)_72%)]"
+          />
+        </>
+      ) : null}
 
       {!isWalletModalActive ? (
         <LanguageSwitcher className="fixed right-4 top-4 z-20 sm:right-6 sm:top-6" />
