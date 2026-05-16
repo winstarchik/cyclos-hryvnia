@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
@@ -161,6 +162,12 @@ export default function WalletPage() {
               <span className="text-[14px] font-bold tracking-wider text-white">CYCLOS</span>
             </div>
             <div className="relative z-30 flex shrink-0 items-center gap-2">
+              <Link
+                className="inline-flex min-h-9 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-semibold text-gray-300 transition hover:bg-white/[0.08] hover:text-white"
+                href={`/${locale}/wallet/export`}
+              >
+                APK
+              </Link>
               <Button
                 aria-label={t("signOut")}
                 className="min-h-9 rounded-xl border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs text-gray-300 hover:bg-white/[0.08] hover:text-white"
