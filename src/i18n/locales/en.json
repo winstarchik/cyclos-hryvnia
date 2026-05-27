@@ -206,7 +206,8 @@
     "wallet": "Wallet",
     "history": "History",
     "receive": "Receive",
-    "send": "Send"
+    "send": "Send",
+    "nfts": "NFTs"
   },
   "auth": {
     "checkingSession": "Checking session",
@@ -217,5 +218,25 @@
     "subtitle": "Popular tokens with 7-day price movement",
     "loadError": "We could not load market charts. Please try again.",
     "retry": "Retry"
+  },
+  "nfts": {
+    "eyebrow": "NFT marketplace",
+    "title": "NFTs in cUAH",
+    "subtitle": "Explore Solana collections with floor prices translated into cUAH. Open live listings on trusted marketplaces.",
+    "collections": "Collections",
+    "owned": "My NFTs",
+    "floor": "Floor",
+    "approx": "Approx.",
+    "listed": "listed",
+    "volume24h": "24h volume",
+    "openMarketplace": "Open marketplace",
+    "loading": "Loading collections...",
+    "error": "We could not load NFT collections. Please try again.",
+    "retry": "Retry",
+    "marketVolume": "Market volume",
+    "currency": "Display currency",
+    "updated": "Updated {time}",
+    "ownedEmptyTitle": "Owned NFTs index is next",
+    "ownedEmptyHint": "The marketplace is ready for discovery. Wallet-owned NFT indexing will connect to the same Solana account flow."
   }
 }

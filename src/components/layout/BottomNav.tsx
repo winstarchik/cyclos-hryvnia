@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 
-const APP_ROUTES = ["/wallet", "/history", "/receive", "/send"] as const;
+const APP_ROUTES = ["/wallet", "/history", "/nfts", "/receive", "/send"] as const;
 
 /* ── Icons — stroke thickens when active ───────────────────── */
 function HomeIcon({ a }: { a: boolean }) {
@@ -43,6 +43,27 @@ function QRIcon({ a }: { a: boolean }) {
   );
 }
 
+function NFTIcon({ a }: { a: boolean }) {
+  const w = a ? "2.1" : "1.7";
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3.5 20.5 8 12 12.5 3.5 8 12 3.5Z"
+        stroke="currentColor"
+        strokeWidth={w}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 11.25 12 15l7-3.75M5 15.25 12 19l7-3.75"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={w}
+      />
+    </svg>
+  );
+}
+
 function SendIcon({ a }: { a: boolean }) {
   const w = a ? "2.1" : "1.7";
   return (
@@ -62,6 +83,7 @@ export function BottomNav() {
   const routes = [
     { href: "/wallet",  label: t("wallet"),  Icon: HomeIcon    },
     { href: "/history", label: t("history"), Icon: HistoryIcon },
+    { href: "/nfts",    label: t("nfts"),    Icon: NFTIcon     },
     { href: "/receive", label: t("receive"), Icon: QRIcon      },
     { href: "/send",    label: t("send"),    Icon: SendIcon    },
   ] as const;
@@ -78,7 +100,7 @@ export function BottomNav() {
       className="bottom-nav-bg fixed bottom-0 left-0 right-0 z-50 px-2"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto grid h-16 max-w-[480px] grid-cols-4">
+      <div className="mx-auto grid h-16 max-w-[520px] grid-cols-5">
         {routes.map(({ href, label, Icon }) => {
           const full     = `/${locale}${href}`;
           const isActive = pathname === full || pathname.startsWith(`${full}/`);

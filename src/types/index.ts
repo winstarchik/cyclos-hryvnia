@@ -84,6 +84,38 @@ export interface Transaction {
 }
 
 /**
+ * NFT collection row used by the web marketplace screen.
+ */
+export interface NFTCollection {
+  /** Stable collection id/slug. */
+  id: string;
+  /** Human-readable collection name. */
+  name: string;
+  /** Short collection ticker/symbol. */
+  symbol: string;
+  /** Optional image URL. UI falls back to a generated visual when empty. */
+  image: string | null;
+  /** Chain/network where this collection trades. */
+  chain: Chain;
+  /** Marketplace source used for the live/open link. */
+  marketplace: "magiceden" | "tensor" | "local";
+  /** Floor price denominated in SOL. */
+  floorPriceSOL: number;
+  /** Floor price converted to USD. */
+  floorPriceUSD: number;
+  /** Floor price converted to Ukrainian hryvnia/cUAH display units. */
+  floorPriceUAH: number;
+  /** Current listed item count when known. */
+  listedCount: number;
+  /** 24-hour collection volume denominated in SOL. */
+  volume24hSOL: number;
+  /** 24-hour floor or volume change percentage. */
+  change24hPercent: number;
+  /** External marketplace URL. */
+  marketplaceUrl: string;
+}
+
+/**
  * Wallet provider options supported by the app.
  */
 export type WalletProvider =
