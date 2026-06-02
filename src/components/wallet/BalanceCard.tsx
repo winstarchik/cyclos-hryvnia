@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useWallet } from "@/hooks/useWallet";
+import { ForgePulse, ForgeSpotlight } from "@/components/common/ForgeUI";
 
 interface BalanceCardProps {
   address: string | null;
@@ -59,7 +60,7 @@ function WalletIcon() {
 
 function BalanceSkeleton() {
   return (
-    <div aria-busy="true" role="status" className="balance-card-bg animate-fade-in rounded-[1.4rem] p-5">
+    <div aria-busy="true" role="status" className="balance-card-bg animate-fade-in rounded-[29px_17px_29px_17px] p-[27px]">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 space-y-3">
           <div className="h-3 w-28 animate-pulse rounded-full bg-white/10" />
@@ -107,13 +108,11 @@ export function BalanceCard({
   ] as const;
 
   return (
-    <div className="balance-card-bg animate-fade-in-up rounded-[1.4rem] p-5">
+    <ForgeSpotlight className="balance-card-bg animate-fade-in-up p-[27px]">
       {/* top row */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#5d7ab8]">
-            {t("totalBalance")}
-          </p>
+          <ForgePulse>{t("totalBalance")}</ForgePulse>
 
           <p className="mt-2 break-words text-[2rem] font-bold leading-tight tracking-tight text-white">
             {fmtUSD(totalValueUSD)}
@@ -169,11 +168,11 @@ export function BalanceCard({
       </div>
 
       {/* action buttons */}
-      <div className="mt-5 grid grid-cols-4 gap-2">
+      <div className="mt-[27px] grid grid-cols-4 gap-[7px]">
         {actions.map(({ href, label, Icon }) => (
           <Link
             key={label} href={href}
-            className="flex flex-col items-center justify-center gap-1.5 rounded-2xl
+            className="flex flex-col items-center justify-center gap-1.5 rounded-[13px_19px_13px_19px]
                        border border-white/[0.08] bg-white/[0.05] py-3 text-white
                        transition hover:bg-white/[0.09] active:scale-[0.96]"
           >
@@ -182,6 +181,6 @@ export function BalanceCard({
           </Link>
         ))}
       </div>
-    </div>
+    </ForgeSpotlight>
   );
 }

@@ -100,7 +100,7 @@ export function BottomNav() {
       className="bottom-nav-bg fixed bottom-0 left-0 right-0 z-50 px-2"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto grid h-16 max-w-[520px] grid-cols-5">
+      <div className="mx-auto grid h-[67px] max-w-[520px] grid-cols-5 gap-[3px] px-[7px]">
         {routes.map(({ href, label, Icon }) => {
           const full     = `/${locale}${href}`;
           const isActive = pathname === full || pathname.startsWith(`${full}/`);
@@ -119,8 +119,8 @@ export function BottomNav() {
               >
                 {/* pill highlight */}
                 <span
-                  className={`flex h-8 w-12 items-center justify-center rounded-2xl transition-colors
-                    ${isActive ? "bg-accent-500/15" : "bg-transparent"}`}
+                  className={`flex h-8 w-12 items-center justify-center rounded-[11px_17px_11px_17px] transition-all
+                    ${isActive ? "border border-accent-400/25 bg-accent-500/15 shadow-[0_0_23px_rgba(65,105,225,.2)]" : "bg-transparent"}`}
                 >
                   <Icon a={isActive} />
                 </span>

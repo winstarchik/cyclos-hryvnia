@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { ForgePulse } from "@/components/common/ForgeUI";
 import type { NFTCollection } from "@/types";
 
 interface NFTCollectionsResponse {
@@ -76,7 +77,7 @@ function CollectionCard({ collection, index }: { collection: NFTCollection; inde
   return (
     <motion.article
       animate={{ opacity: 1, y: 0 }}
-      className="cy-card animate-fade-in-up p-4"
+      className="forge-spotlight animate-fade-in-up p-[13px]"
       initial={{ opacity: 0, y: 16 }}
       transition={{ delay: index * 0.04, duration: 0.28 }}
     >
@@ -201,9 +202,7 @@ export default function NFTsPage() {
     <main className="cy-page" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
       <section className="mx-auto w-full max-w-[520px] px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)]">
         <motion.div animate={{ opacity: 1, y: 0 }} initial={{ opacity: 0, y: 12 }}>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-400">
-            {t("eyebrow")}
-          </p>
+          <ForgePulse>{t("eyebrow")}</ForgePulse>
           <h1 className="mt-2 text-3xl font-bold text-white">{t("title")}</h1>
           <p className="mt-2 text-sm leading-6 text-[#6d7f9f]">{t("subtitle")}</p>
         </motion.div>

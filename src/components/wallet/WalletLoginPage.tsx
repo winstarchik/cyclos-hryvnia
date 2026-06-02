@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
+import { ForgeBackdrop, ForgeBorder, ForgePulse } from "@/components/common/ForgeUI";
 import { OptimizedLoginBackground } from "@/components/visual/OptimizedLoginBackground";
 import { useWallet } from "@/hooks/useWallet";
 import { hasWeb3AuthClientId } from "@/lib/env";
@@ -366,8 +367,8 @@ export function WalletLoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen overflow-hidden bg-dark-950 px-4 py-8 text-white sm:px-6">
-      <div aria-hidden="true" className="animate-gradient-shift absolute inset-0" />
+    <main className="relative flex min-h-screen overflow-hidden bg-dark-950 px-[13px] py-[27px] text-white sm:px-[27px]">
+      <ForgeBackdrop dense />
       <OptimizedLoginBackground disabled={isWalletModalActive} />
 
       {!isWalletModalActive ? (
@@ -377,11 +378,9 @@ export function WalletLoginPage() {
       <div className="relative z-10 flex w-full flex-1 items-center justify-center pb-[max(env(safe-area-inset-bottom),2rem)] pt-[max(env(safe-area-inset-top),2rem)]">
         {!isWalletModalActive ? (
         <section className="animate-fade-in-up w-full max-w-sm transition-opacity duration-200">
-          <div className="mb-7 text-center">
+          <div className="mb-[27px] text-center">
             <CUAHCoin />
-            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-accent-400">
-              {t("eyebrow")}
-            </p>
+            <div className="mt-[27px]"><ForgePulse>{t("eyebrow")}</ForgePulse></div>
             <h1 className="mt-3 text-4xl font-bold leading-tight text-white">
               {t("title")}
             </h1>
@@ -390,7 +389,8 @@ export function WalletLoginPage() {
             </p>
           </div>
 
-          <div className="cy-card-soft p-4 sm:p-5">
+          <ForgeBorder>
+          <div className="p-[13px] sm:p-[27px]">
             <div className="grid grid-cols-2 gap-2 rounded-2xl border border-dark-800 bg-dark-950/70 p-1">
               {(["login", "register"] as const).map((mode) => (
                 <button
@@ -515,6 +515,7 @@ export function WalletLoginPage() {
               .
             </p>
           </div>
+          </ForgeBorder>
         </section>
         ) : null}
       </div>

@@ -1098,14 +1098,14 @@ export default function SendPage() {
 
         {/* ── Header ── */}
         <header
-          className="bg-gradient-to-b from-[#080f20] to-dark-950 px-4 pb-4"
+          className="bg-gradient-to-b from-[#080f20]/95 to-dark-950/70 px-[13px] pb-[13px]"
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 1rem)" }}
         >
-          <div className="mb-5 flex items-center gap-3">
+          <div className="mb-[27px] flex items-center gap-[13px]">
             <Link
               href={`/${locale}/wallet`}
               aria-label={common("back") ?? "Back"}
-              className="flex h-9 w-9 items-center justify-center rounded-xl
+              className="flex h-9 w-9 items-center justify-center rounded-[13px_19px_13px_19px]
                          border border-white/[0.07] bg-white/[0.04] text-[#7a8faa]
                          transition hover:bg-white/[0.08] hover:text-white"
             >
@@ -1117,8 +1117,8 @@ export default function SendPage() {
           </div>
         </header>
 
-        <div className="space-y-4 px-4 pt-1">
-          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-1">
+        <div className="space-y-[13px] px-[13px] pt-[3px]">
+          <div className="grid grid-cols-2 gap-[3px] rounded-[17px_29px_17px_29px] border border-white/[0.07] bg-white/[0.03] p-[3px]">
             {(["send", "swap"] as const).map((item) => (
               <button
                 key={item}
@@ -1130,7 +1130,7 @@ export default function SendPage() {
                   setShowTokenPicker(false);
                   setShowSwapOutputPicker(false);
                 }}
-                className={`min-h-[44px] rounded-xl text-[13px] font-semibold transition ${
+                className={`min-h-[44px] rounded-[13px_19px_13px_19px] text-[13px] font-semibold transition ${
                   mode === item
                     ? "bg-accent-500 text-white shadow-[0_0_24px_rgba(59,111,255,0.25)]"
                     : "text-[#7a8faa] hover:bg-white/[0.04] hover:text-white"

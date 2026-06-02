@@ -22,6 +22,14 @@
     --color-danger:  #ef4444;
     --color-warning: #f59e0b;
     --transition-smooth: all 0.25s ease-out;
+    --space-1: 13px;
+    --space-2: 27px;
+    --space-3: 41px;
+    --radius-forge: 17px;
+    --radius-forge-wide: 29px 17px 29px 17px;
+    --color-forge-cyan: #57e6d5;
+    --color-forge-violet: #8598ff;
+    --color-forge-ink: #060a13;
 
     --dark-950: 7 11 20;
     --dark-900: 13 20 34;
@@ -44,6 +52,7 @@
 
   body {
     @apply bg-dark-950 text-white;
+    font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
     scrollbar-width: thin;
     scrollbar-color: var(--color-dark-800) transparent;
   }
@@ -74,15 +83,19 @@
   }
 
   .card-base {
-    @apply rounded-2xl border border-white/[0.06] bg-[#0f1825] backdrop-blur-sm;
+    @apply border border-white/[0.06] bg-[#0f1825] backdrop-blur-sm;
+    border-radius: var(--radius-forge-wide);
   }
 
   .cy-card {
-    @apply rounded-2xl border border-white/[0.06] bg-[#0f1825] shadow-xl shadow-black/20;
+    @apply border border-white/[0.07] bg-[#0f1825]/95 shadow-xl shadow-black/20;
+    border-radius: var(--radius-forge-wide);
+    background-image: linear-gradient(145deg, rgba(255,255,255,.025), transparent 58%);
   }
 
   .cy-card-soft {
-    @apply rounded-3xl border border-white/[0.06] bg-[#0f1825]/85 shadow-2xl shadow-black/20 backdrop-blur-xl;
+    @apply border border-white/[0.07] bg-[#0f1825]/85 shadow-2xl shadow-black/20 backdrop-blur-xl;
+    border-radius: 31px 17px 31px 17px;
   }
 
   .btn-primary {
@@ -95,25 +108,51 @@
            transition focus:border-accent-500 focus:outline-none;
   }
 
-  .cy-page  { @apply min-h-dvh overflow-x-hidden overflow-y-auto bg-dark-950 text-white; }
-  .cy-shell { @apply mx-auto w-full max-w-[480px] px-4; }
+  .cy-page  {
+    @apply relative min-h-dvh overflow-x-hidden overflow-y-auto bg-dark-950 text-white;
+    isolation: isolate;
+    background:
+      radial-gradient(circle at 88% 2%, rgba(65,105,225,.12), transparent 22rem),
+      radial-gradient(circle at 5% 60%, rgba(87,230,213,.055), transparent 20rem),
+      #070b14;
+  }
+  .cy-page::before {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    content: "";
+    opacity: .34;
+    background-image:
+      linear-gradient(rgba(107,143,255,.09) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(107,143,255,.09) 1px, transparent 1px);
+    background-size: 41px 41px;
+    mask-image: linear-gradient(to bottom, black, transparent 72%);
+  }
+  .cy-shell { @apply mx-auto w-full max-w-[480px]; padding-inline: var(--space-1); }
 
   .cy-input {
-    @apply min-h-12 w-full rounded-2xl border border-white/[0.08] bg-dark-900 px-4
+    @apply min-h-12 w-full border border-white/[0.08] bg-dark-900
            text-white outline-none transition placeholder:text-gray-600
            focus:border-accent-500 focus:ring-2 focus:ring-accent-500/20
            disabled:cursor-not-allowed disabled:opacity-60;
+    border-radius: var(--radius-forge);
+    padding-inline: var(--space-1);
   }
 
   .cy-chip {
-    @apply inline-flex min-h-10 items-center justify-center rounded-xl border
-           border-white/[0.08] bg-white/[0.04] px-4 text-sm font-semibold
+    @apply inline-flex min-h-10 items-center justify-center border
+           border-white/[0.08] bg-white/[0.04] text-sm font-semibold
            text-gray-300 transition hover:border-accent-500/60 hover:text-white;
+    border-radius: 13px 19px 13px 19px;
+    padding-inline: var(--space-1);
   }
 
   /* The deep-blue balance card */
   .balance-card-bg {
-    background: linear-gradient(135deg, #172454 0%, #0f1a3e 55%, #090f24 100%);
+    background:
+      linear-gradient(118deg, rgba(87,230,213,.08), transparent 28%),
+      linear-gradient(135deg, #172454 0%, #0f1a3e 55%, #090f24 100%);
     border: 1px solid rgba(65,105,225,0.28);
     box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(107,143,255,0.10);
   }
@@ -125,11 +164,136 @@
 
   /* Bottom nav */
   .bottom-nav-bg {
-    background: rgba(7,11,20,0.93);
+    background: rgba(6,10,19,0.91);
     backdrop-filter: blur(22px);
     -webkit-backdrop-filter: blur(22px);
     border-top: 1px solid rgba(255,255,255,0.05);
   }
+
+  .forge-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: #060a13;
+  }
+
+  .forge-grid {
+    position: absolute;
+    inset: -20%;
+    opacity: .38;
+    background-image:
+      linear-gradient(rgba(133,152,255,.11) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(133,152,255,.11) 1px, transparent 1px);
+    background-size: 41px 41px;
+    transform: perspective(900px) rotateX(68deg) translateY(-18%);
+    mask-image: radial-gradient(ellipse at center, black 10%, transparent 67%);
+  }
+
+  .forge-beam {
+    position: absolute;
+    left: -18%;
+    width: 136%;
+    height: 240px;
+    filter: blur(34px);
+    transform: rotate(-9deg);
+  }
+
+  .forge-beam-primary {
+    top: 6%;
+    background: linear-gradient(90deg, transparent, rgba(65,105,225,.28), rgba(87,230,213,.10), transparent);
+  }
+
+  .forge-beam-secondary {
+    bottom: 8%;
+    background: linear-gradient(90deg, transparent, rgba(87,230,213,.16), rgba(133,152,255,.14), transparent);
+  }
+
+  .forge-noise {
+    position: absolute;
+    inset: 0;
+    opacity: .18;
+    background-image: radial-gradient(rgba(255,255,255,.42) .6px, transparent .6px);
+    background-size: 13px 13px;
+    mask-image: linear-gradient(to bottom, black, transparent 88%);
+  }
+
+  .forge-border {
+    position: relative;
+    overflow: hidden;
+    border-radius: 31px 17px 31px 17px;
+    padding: 1px;
+    background: rgba(255,255,255,.08);
+  }
+
+  .forge-border-glow {
+    position: absolute;
+    inset: -45%;
+    background: conic-gradient(from 120deg, transparent 0 35%, rgba(87,230,213,.78), rgba(65,105,225,.9), transparent 61% 100%);
+    animation: forge-spin 9s linear infinite;
+  }
+
+  .forge-border-inner {
+    position: relative;
+    height: 100%;
+    border-radius: 30px 16px 30px 16px;
+    background: rgba(11,18,32,.95);
+  }
+
+  .forge-spotlight {
+    --spot-x: 50%;
+    --spot-y: 50%;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: var(--radius-forge-wide);
+    background:
+      radial-gradient(260px circle at var(--spot-x) var(--spot-y), rgba(107,143,255,.16), transparent 56%),
+      linear-gradient(145deg, rgba(15,24,37,.98), rgba(9,15,26,.96));
+  }
+
+  .forge-pulse {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #9cb0db;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+
+  .forge-pulse-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--color-forge-cyan);
+    box-shadow: 0 0 0 0 rgba(87,230,213,.5);
+    animation: forge-pulse 2.2s ease-out infinite;
+  }
+
+  .forge-button {
+    position: relative;
+    border-radius: 13px 21px 13px 21px;
+    isolation: isolate;
+  }
+
+  .forge-button::after {
+    position: absolute;
+    top: -120%;
+    bottom: -120%;
+    left: -42%;
+    width: 22%;
+    z-index: -1;
+    content: "";
+    opacity: .58;
+    transform: rotate(18deg);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.34), transparent);
+    transition: left .6s ease;
+  }
+
+  .forge-button:hover::after { left: 126%; }
 }
 
 @layer utilities {
@@ -175,6 +339,12 @@
   0%   { background-position:0%   0%;   filter:hue-rotate(0deg);   }
   50%  { background-position:100% 30%;  filter:hue-rotate(20deg);  }
   100% { background-position:50%  100%; filter:hue-rotate(-15deg); }
+}
+
+@keyframes forge-spin { to { transform: rotate(360deg); } }
+@keyframes forge-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(87,230,213,.45); }
+  70%, 100% { box-shadow: 0 0 0 10px rgba(87,230,213,0); }
 }
 
 @media (prefers-reduced-motion:reduce) {

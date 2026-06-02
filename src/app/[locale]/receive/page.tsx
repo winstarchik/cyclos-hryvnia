@@ -222,8 +222,8 @@ export default function ReceivePage() {
           </h1>
         </header>
 
-        <section className="animate-scale-in space-y-6">
-          <div className="relative rounded-2xl border border-white/[0.07] bg-white/[0.04] p-3 shadow-[0_18px_60px_rgba(0,0,0,0.2)]">
+        <section className="animate-scale-in space-y-[27px]">
+          <div className="relative rounded-[17px_29px_17px_29px] border border-white/[0.07] bg-white/[0.04] p-[13px] shadow-[0_18px_60px_rgba(0,0,0,0.2)]">
             <button
               aria-expanded={tokenPickerOpen}
               className="flex min-h-14 w-full items-center gap-3 rounded-xl text-left transition hover:bg-white/[0.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/60"
@@ -276,8 +276,8 @@ export default function ReceivePage() {
             ) : null}
           </div>
 
-          <div className="rounded-[1.65rem] border border-white/[0.07] bg-[#111825] p-3 shadow-[0_24px_90px_rgba(0,0,0,0.32)]">
-            <div className="relative overflow-hidden rounded-[1.25rem] bg-white">
+          <div className="rounded-[31px_17px_31px_17px] border border-white/[0.09] bg-[#111825] p-[13px] shadow-[0_24px_90px_rgba(0,0,0,0.32)]">
+            <div className="relative overflow-hidden rounded-[21px_13px_21px_13px] bg-white">
               {address ? (
                 <>
                   <QRCode
@@ -304,7 +304,7 @@ export default function ReceivePage() {
             <p className="mb-3 text-sm font-medium text-gray-400">
               {t("receive.walletAddress")}
             </p>
-            <div className="flex min-h-16 items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.04] px-4">
+            <div className="flex min-h-16 items-center gap-[13px] rounded-[17px_29px_17px_29px] border border-white/[0.07] bg-white/[0.04] px-[13px]">
               <p className="min-w-0 flex-1 select-all truncate font-mono text-base font-semibold text-white">
                 {addressLabel}
               </p>
@@ -341,7 +341,7 @@ export default function ReceivePage() {
 
           {address ? (
             <button
-              className="group flex min-h-16 w-full items-center gap-5 rounded-2xl border border-accent-500/50 bg-dark-900/60 p-2 text-white shadow-[0_0_30px_rgba(59,111,255,0.12)] transition hover:border-accent-400 hover:bg-dark-800/70"
+              className="group flex min-h-16 w-full items-center gap-[13px] rounded-[17px_29px_17px_29px] border border-accent-500/50 bg-dark-900/60 p-[7px] text-white shadow-[0_0_30px_rgba(59,111,255,0.12)] transition hover:border-accent-400 hover:bg-dark-800/70"
               onClick={shareAddress}
               type="button"
             >

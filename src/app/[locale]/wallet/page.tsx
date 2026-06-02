@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { ForgePulse, ForgeSpotlight } from "@/components/common/ForgeUI";
 import { MarketCharts } from "@/components/market/MarketCharts";
 import { BalanceCard } from "@/components/wallet/BalanceCard";
 import { TokenList } from "@/components/wallet/TokenList";
@@ -149,11 +150,11 @@ export default function WalletPage() {
 
         {/* ── Header zone ── */}
         <header
-          className="bg-gradient-to-b from-[#080f20] to-dark-950 px-4 pb-4"
+          className="bg-gradient-to-b from-[#080f20]/95 to-dark-950/70 px-[13px] pb-[13px]"
           style={{ paddingTop: "calc(env(safe-area-inset-top) + 1rem)" }}
         >
           {/* top bar */}
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-[13px] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="flex h-7 w-7 items-center justify-center rounded-[8px]
                               bg-[radial-gradient(circle_at_35%_35%,#6b8fff,#2441a8)]">
@@ -195,26 +196,25 @@ export default function WalletPage() {
           />
 
           {/* promo banner */}
-          <div className="mt-3 flex items-center justify-between rounded-2xl
-                          border border-white/[0.05] bg-[#0b1220] px-4 py-3">
+          <ForgeSpotlight className="mt-[13px] flex items-center justify-between px-[13px] py-[13px]">
             <div>
-              <p className="text-[13px] font-semibold text-[#c0d4ff]">Cyclos Hryvnia</p>
+              <ForgePulse>Cyclos Hryvnia</ForgePulse>
               <p className="text-[12px] text-[#2e4268]">{promoSub}</p>
             </div>
             <div className="glow-blue flex h-10 w-10 items-center justify-center rounded-full
                             bg-[radial-gradient(circle_at_35%_35%,#6b8fff,#2441a8)]">
               <span className="text-[17px] font-bold text-white">₴</span>
             </div>
-          </div>
+          </ForgeSpotlight>
 
           {/* tabs */}
-          <div className="mt-3 flex gap-1 rounded-2xl border border-white/[0.05]
-                          bg-[#0a1220] p-1">
+          <div className="mt-[13px] flex gap-[3px] rounded-[17px_29px_17px_29px] border border-white/[0.05]
+                          bg-[#0a1220] p-[3px]">
             {tabs.map(({ key, label }) => (
               <button
                 key={key} type="button"
                 onClick={() => setTab(key)}
-                className={`flex-1 rounded-xl py-[9px] text-[13px] font-semibold transition-colors
+                className={`flex-1 rounded-[13px_19px_13px_19px] py-[9px] text-[13px] font-semibold transition-colors
                   ${tab === key
                     ? "bg-[#152045] text-accent-400"
                     : "text-[#3a4f6e] hover:text-[#7a8faa]"}`}
@@ -228,7 +228,7 @@ export default function WalletPage() {
         {/* ── Content ── */}
         <section
           aria-busy={tab === "assets" ? balLoading : txLoading}
-          className="px-4 pt-3"
+          className="px-[13px] pt-[13px]"
         >
           {/* market */}
           {tab === "market" && <MarketCharts />}

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/common/Button";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { ForgePulse } from "@/components/common/ForgeUI";
 import { useTransactions } from "@/hooks/useTransactions";
 import type { Transaction, TransactionType } from "@/types";
 
@@ -205,9 +206,7 @@ export default function HistoryPage() {
         className="mx-auto w-full max-w-[480px] px-4 pt-[calc(env(safe-area-inset-top)+1.5rem)]"
       >
         <div className="mb-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent-400">
-            {t("eyebrow")}
-          </p>
+          <ForgePulse>{t("eyebrow")}</ForgePulse>
           <h1 className="mt-2 text-3xl font-bold text-white">{t("title")}</h1>
         </div>
 

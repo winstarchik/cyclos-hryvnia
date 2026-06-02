@@ -93,7 +93,7 @@ export function TokenList({ balances }: TokenListProps) {
         return (
           <div
             key={bal.token.address}
-            className="token-card animate-fade-in-left flex min-w-0 items-center gap-3"
+            className="token-card animate-fade-in-left group flex min-w-0 items-center gap-[13px] border-b border-white/[0.035] bg-[linear-gradient(90deg,transparent,rgba(107,143,255,.025),transparent)]"
             style={{ animationDelay: `${i * 35}ms` }}
           >
             {/* icon */}

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
-import { Inter } from "next/font/google";
+import { Manrope } from "next/font/google";
 import "@/styles/globals.css";
 import { TMAProvider } from "@/app/TMAProvider";
 import { Web3AuthAppProvider } from "@/app/Web3AuthAppProvider";
 
-const inter = Inter({
-  variable: "--font-inter",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin", "cyrillic"],
   display: "swap",
   weight: ["400", "500", "600", "700"],
@@ -36,7 +36,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={`${inter.variable} dark h-full antialiased`}
+      className={`${manrope.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-dark-950 font-sans text-dark-100 scrollbar-dark">
         <TMAProvider>
