@@ -118,7 +118,10 @@ const web3AuthOptions: Web3AuthOptions = {
     authConnector({
       connectorSettings: {
         redirectUrl: getRedirectUrl(),
-        uxMode: UX_MODE.REDIRECT,
+        // Web3Auth Modal v10 can lose the restored provider after a full-page
+        // redirect in Next.js. A direct user click opens this popup reliably
+        // and keeps the SDK instance alive for the returned Solana account.
+        uxMode: UX_MODE.POPUP,
       },
     }),
     walletConnectV2Connector({}),
@@ -128,7 +131,7 @@ const web3AuthOptions: Web3AuthOptions = {
   uiConfig: {
     appName: "Cyclos Hryvnia",
     mode: "dark",
-    uxMode: UX_MODE.REDIRECT,
+    uxMode: UX_MODE.POPUP,
     loginMethodsOrder: [
       AUTH_CONNECTION.EMAIL_PASSWORDLESS,
       AUTH_CONNECTION.GOOGLE,

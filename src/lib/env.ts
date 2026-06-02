@@ -96,20 +96,50 @@ export function getAdminEmail(): string | undefined {
   return process.env.ADMIN_EMAIL?.trim() || process.env.SMTP_USER?.trim();
 }
 
-export function getSmtpConfig() {
-  const host = process.env.SMTP_HOST;
-  const port = process.env.SMTP_PORT;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM;
+function normalizeEnvValue(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
 
-  if (!host || !port || !user || !pass || !from) {
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const hasWrappingQuotes =
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"));
+
+  return hasWrappingQuotes ? trimmed.slice(1, -1).trim() : trimmed;
+}
+
+export function getSmtpConfig() {
+  const host = normalizeEnvValue(process.env.SMTP_HOST);
+  const port = normalizeEnvValue(process.env.SMTP_PORT);
+  const user = normalizeEnvValue(process.env.SMTP_USER);
+  const rawPass = normalizeEnvValue(process.env.SMTP_PASS);
+  const from = normalizeEnvValue(process.env.SMTP_FROM);
+
+  if (!host || !port || !user || !rawPass || !from) {
+    throw new Error("Missing SMTP configuration");
+  }
+
+  const parsedPort = Number(port);
+  if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65_535) {
+    throw new Error("Invalid SMTP configuration: port");
+  }
+
+  // Google displays app passwords in groups separated by spaces. SMTP expects
+  // the actual 16-character value, while other providers may use spaces.
+  const pass =
+    host.toLowerCase() === "smtp.gmail.com"
+      ? rawPass.replace(/\s+/g, "")
+      : rawPass;
+
+  if (!pass) {
     throw new Error("Missing SMTP configuration");
   }
 
   return {
     host,
-    port: Number(port),
+    port: parsedPort,
     user,
     pass,
     from,

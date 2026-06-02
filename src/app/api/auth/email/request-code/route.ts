@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidAuthEmail, normalizeAuthEmail } from "@/lib/server/authInput";
 import { findUserByEmail } from "@/lib/server/accounts";
-import { sendAuthCodeEmail } from "@/lib/server/email";
+import {
+  getEmailDeliveryErrorDetails,
+  sendAuthCodeEmail,
+} from "@/lib/server/email";
 import {
   attachOtpCookie,
   createOtpToken,
@@ -27,7 +30,7 @@ function maskEmail(email: string) {
 function isMissingSmtpConfig(error: unknown) {
   return (
     error instanceof Error &&
-    /missing smtp configuration/i.test(error.message)
+    /smtp configuration/i.test(error.message)
   );
 }
 
@@ -114,8 +117,13 @@ export async function POST(request: NextRequest) {
 
     return attachOtpCookie(response, createOtpToken(email, code, mode));
   } catch (error) {
+    console.error(
+      "Email code request failed:",
+      getEmailDeliveryErrorDetails(error),
+    );
+
     if (process.env.NODE_ENV !== "production") {
-      console.error("Email code request failed:", error);
+      console.error(error);
 
       // Never return OTP codes in API responses, even in development.
     }

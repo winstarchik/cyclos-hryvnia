@@ -2,6 +2,43 @@ import nodemailer from "nodemailer";
 import { getSmtpConfig } from "@/lib/env";
 import type { OtpPurpose } from "@/lib/server/otp";
 
+interface EmailDeliveryErrorDetails {
+  name: string;
+  code?: string;
+  command?: string;
+  responseCode?: number;
+  syscall?: string;
+}
+
+export function getEmailDeliveryErrorDetails(
+  error: unknown,
+): EmailDeliveryErrorDetails {
+  if (!(error instanceof Error)) {
+    return { name: "UnknownError" };
+  }
+
+  const smtpError = error as Error & {
+    code?: unknown;
+    command?: unknown;
+    responseCode?: unknown;
+    syscall?: unknown;
+  };
+
+  return {
+    name: error.name,
+    ...(typeof smtpError.code === "string" ? { code: smtpError.code } : {}),
+    ...(typeof smtpError.command === "string"
+      ? { command: smtpError.command }
+      : {}),
+    ...(typeof smtpError.responseCode === "number"
+      ? { responseCode: smtpError.responseCode }
+      : {}),
+    ...(typeof smtpError.syscall === "string"
+      ? { syscall: smtpError.syscall }
+      : {}),
+  };
+}
+
 function createTransporter() {
   const smtp = getSmtpConfig();
 
@@ -13,6 +50,9 @@ function createTransporter() {
     host: smtp.host,
     port: smtp.port,
     secure: smtp.port === 465,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
   });
 }
 
