@@ -191,7 +191,7 @@
     "simulationFailed": "The network could not prepare this transaction. Check the token, amount, and recipient, then try again.",
     "addressBook": "Address book",
     "addressBookHint": "Save friends and regular recipients for faster transfers.",
-    "contactNamePlaceholder": "Name, for example Uncle",
+    "contactNamePlaceholder": "Contact name",
     "saveContact": "Save",
     "savedContacts": "Saved contacts",
     "noSavedContacts": "No saved contacts yet.",

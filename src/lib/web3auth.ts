@@ -118,10 +118,9 @@ const web3AuthOptions: Web3AuthOptions = {
     authConnector({
       connectorSettings: {
         redirectUrl: getRedirectUrl(),
-        // Web3Auth Modal v10 can lose the restored provider after a full-page
-        // redirect in Next.js. A direct user click opens this popup reliably
-        // and keeps the SDK instance alive for the returned Solana account.
-        uxMode: UX_MODE.POPUP,
+        // OAuth popups are opened without window.opener in Telegram and some
+        // embedded browsers. Redirect mode works in regular browsers and TMA.
+        uxMode: UX_MODE.REDIRECT,
       },
     }),
     walletConnectV2Connector({}),
@@ -131,7 +130,7 @@ const web3AuthOptions: Web3AuthOptions = {
   uiConfig: {
     appName: "Cyclos Hryvnia",
     mode: "dark",
-    uxMode: UX_MODE.POPUP,
+    uxMode: UX_MODE.REDIRECT,
     loginMethodsOrder: [
       AUTH_CONNECTION.EMAIL_PASSWORDLESS,
       AUTH_CONNECTION.GOOGLE,

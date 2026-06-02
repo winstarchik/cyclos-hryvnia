@@ -117,8 +117,12 @@ function getWalletErrorMessage(error: unknown): string {
     return "Web3Auth did not return a wallet. Check that this project has Google or Email enabled and that the matching auth connection ID is configured.";
   }
 
-  if (/wallet|not installed|not available|unsupported/i.test(message)) {
-    return "This wallet is not available in the current browser. Try another option in the Web3Auth modal.";
+  if (
+    /wallet (?:is )?not installed|wallet (?:is )?not available|unsupported wallet|provider (?:is )?not found/i.test(
+      message,
+    )
+  ) {
+    return "Web3Auth signed you in, but did not create an embedded wallet. Enable the Embedded Wallets product for this project in the Web3Auth dashboard, then try again.";
   }
 
   if (isNetworkError(error) || appError.code === "TIMEOUT") {
