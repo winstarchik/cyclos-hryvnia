@@ -104,6 +104,21 @@ function toSwapMint(tokenAddress: string): string {
   return tokenAddress === "SOL" ? SOL_MINT_ADDRESS : tokenAddress;
 }
 
+function isKnownSwapToken(tokenAddress: string): boolean {
+  const mint = toSwapMint(tokenAddress);
+
+  if (!Object.values(TOKENS).some((token) => toSwapMint(token.address) === mint)) {
+    return false;
+  }
+
+  try {
+    new PublicKey(mint);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function encodeU64LE(value: bigint) {
   const bytes = new Uint8Array(8);
   let remaining = value;
@@ -551,6 +566,11 @@ export default function SendPage() {
     form.amount === "" ||
     (parsedAmount > 0 && parsedAmount <= maxAmount);
   const canStartTransaction = status === "idle" || status === "error";
+  const isBusy = status === "signing" || status === "sending";
+  const selectedTokenSupported = selectedBal
+    ? isKnownSwapToken(selectedBal.token.address)
+    : false;
+  const selectedOutputSupported = isKnownSwapToken(swapOutputAddress);
 
   const canSend =
     isValidAddress(form.recipient) &&
@@ -564,6 +584,8 @@ export default function SendPage() {
     !!selectedBal &&
     !!address &&
     !walletLocked &&
+    selectedTokenSupported &&
+    selectedOutputSupported &&
     parsedAmount > 0 &&
     parsedAmount <= maxAmount &&
     !!quote &&
@@ -572,6 +594,38 @@ export default function SendPage() {
     canStartTransaction;
 
   const canSubmit = mode === "send" ? canSend : canSwap;
+  const submitHint = useMemo(() => {
+    if (isBusy) return null;
+    if (!address) return t("connectWalletFirst");
+    if (walletLocked) return t("unlockRequired");
+    if (!selectedBal) return t("selectTokenHint");
+    if (mode === "swap" && (!selectedTokenSupported || !selectedOutputSupported)) {
+      return t("swapUnsupportedToken");
+    }
+    if (!form.amount || parsedAmount <= 0) return t("amountRequired");
+    if (parsedAmount > maxAmount) return t("insufficientBalance");
+    if (mode === "send" && !isValidAddress(form.recipient)) return t("invalidAddress");
+    if (mode === "swap" && quoteLoading) return t("swapRouteLoading");
+    if (mode === "swap" && quoteError) return quoteError;
+    if (mode === "swap" && !quote) return t("swapRouteRequired");
+    return null;
+  }, [
+    address,
+    form.amount,
+    form.recipient,
+    isBusy,
+    maxAmount,
+    mode,
+    parsedAmount,
+    quote,
+    quoteError,
+    quoteLoading,
+    selectedBal,
+    selectedOutputSupported,
+    selectedTokenSupported,
+    t,
+    walletLocked,
+  ]);
 
   useEffect(() => {
     try {
@@ -624,9 +678,16 @@ export default function SendPage() {
       return;
     }
 
+    if (!selectedTokenSupported || !selectedOutputSupported) {
+      setQuote(null);
+      setQuoteError(t("swapUnsupportedToken"));
+      setQuoteLoading(false);
+      return;
+    }
+
     if (parsedAmount > maxAmount) {
       setQuote(null);
-      setQuoteError("Insufficient balance for this swap.");
+      setQuoteError(t("insufficientBalance"));
       setQuoteLoading(false);
       return;
     }
@@ -634,7 +695,7 @@ export default function SendPage() {
     const rawAmount = toBaseUnits(form.amount, selectedBal.token.decimals);
     if (!rawAmount || BigInt(rawAmount) <= BigInt(0)) {
       setQuote(null);
-      setQuoteError("Enter a valid amount.");
+      setQuoteError(t("invalidAmount"));
       setQuoteLoading(false);
       return;
     }
@@ -643,7 +704,7 @@ export default function SendPage() {
     const outputMint = toSwapMint(swapOutputAddress);
     if (inputMint === outputMint) {
       setQuote(null);
-      setQuoteError("Choose a different output token.");
+      setQuoteError(t("swapDifferentToken"));
       setQuoteLoading(false);
       return;
     }
@@ -668,12 +729,12 @@ export default function SendPage() {
         });
 
         if (!response.ok) {
-          throw new Error("Jupiter route was not found for this pair.");
+          throw new Error(t("swapRouteNotFound"));
         }
 
         const payload = (await response.json()) as JupiterQuoteResponse;
         if (!payload.outAmount) {
-          throw new Error("Jupiter returned an empty quote.");
+          throw new Error(t("swapEmptyQuote"));
         }
         validateJupiterQuote(payload, inputMint, outputMint, rawAmount);
 
@@ -683,7 +744,7 @@ export default function SendPage() {
         const message =
           quoteError instanceof Error
             ? quoteError.message
-            : "Could not load swap quote.";
+            : t("swapQuoteError");
         setQuote(null);
         setQuoteError(message);
       } finally {
@@ -703,7 +764,10 @@ export default function SendPage() {
     mode,
     parsedAmount,
     selectedBal,
+    selectedOutputSupported,
+    selectedTokenSupported,
     swapOutputAddress,
+    t,
   ]);
 
   const friendlyErrorMessage = useCallback(
@@ -1041,7 +1105,7 @@ export default function SendPage() {
             <CheckCircleIcon />
             <div>
               <p className="text-[20px] font-bold text-white">
-                {mode === "swap" ? "Swap confirmed" : (t("successTitle") ?? "Sent!")}
+                {mode === "swap" ? t("swapConfirmed") : (t("successTitle") ?? "Sent!")}
               </p>
               <p className="mt-1 text-[14px] text-[#3d5070]">
                 {parsedAmount} {selectedBal?.token.symbol ?? "SOL"}{" "}
@@ -1086,8 +1150,6 @@ export default function SendPage() {
   }
 
   // ── Main form ──────────────────────────────────────────────────────────────
-
-  const isBusy = status === "signing" || status === "sending";
 
   return (
     <main
@@ -1136,7 +1198,7 @@ export default function SendPage() {
                     : "text-[#7a8faa] hover:bg-white/[0.04] hover:text-white"
                 }`}
               >
-                {item === "send" ? "Send" : "Swap"}
+                {item === "send" ? t("sendMode") : t("swapMode")}
               </button>
             ))}
           </div>
@@ -1231,7 +1293,7 @@ export default function SendPage() {
                         {selectedBal.amount.toLocaleString("en-US", {
                           maximumFractionDigits: 4,
                         })}{" "}
-                        available
+                        {t("available")}
                       </p>
                     </div>
                     <svg
@@ -1273,7 +1335,7 @@ export default function SendPage() {
 
                 {!balLoading && balances.length === 0 && (
                   <p className="py-4 text-center text-[13px] text-[#3d5070]">
-                    No tokens available
+                    {t("noTokensAvailable")}
                   </p>
                 )}
               </div>
@@ -1283,7 +1345,7 @@ export default function SendPage() {
           {mode === "swap" && (
             <div className="cy-card rounded-[1.4rem] p-4">
               <p className="mb-2 block text-[11px] font-semibold uppercase tracking-widest text-[#5d7ab8]">
-                Receive Token
+                {t("receiveToken")}
               </p>
 
               <div className="relative">
@@ -1364,12 +1426,12 @@ export default function SendPage() {
                 {quoteLoading ? (
                   <p className="flex items-center gap-2 text-[13px] text-[#7a8faa]">
                     <LoaderIcon />
-                    Loading Jupiter route...
+                    {t("swapRouteLoading")}
                   </p>
                 ) : quote ? (
                   <div className="space-y-2 text-[13px]">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[#3d5070]">You receive</span>
+                      <span className="text-[#3d5070]">{t("swapYouReceive")}</span>
                       <span className="font-semibold text-white">
                         {swapOutAmount.toLocaleString("en-US", {
                           maximumFractionDigits: 6,
@@ -1378,7 +1440,7 @@ export default function SendPage() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[#3d5070]">Rate</span>
+                      <span className="text-[#3d5070]">{t("swapRate")}</span>
                       <span className="text-[#7a8faa]">
                         1 {selectedBal?.token.symbol ?? ""} ={" "}
                         {swapRate.toLocaleString("en-US", {
@@ -1388,11 +1450,11 @@ export default function SendPage() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[#3d5070]">Slippage</span>
+                      <span className="text-[#3d5070]">{t("swapSlippage")}</span>
                       <span className="text-[#7a8faa]">0.5%</span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[#3d5070]">Route</span>
+                      <span className="text-[#3d5070]">{t("swapRoute")}</span>
                       <span className="truncate text-right text-[#7a8faa]">
                         {quote.routePlan
                           ?.map((item) => item.swapInfo.label ?? "Jupiter")
@@ -1403,7 +1465,7 @@ export default function SendPage() {
                   </div>
                 ) : (
                   <p className="text-[13px] text-[#3d5070]">
-                    Enter an amount to load the best Jupiter route.
+                    {t("swapAmountPrompt")}
                   </p>
                 )}
               </div>
@@ -1432,7 +1494,7 @@ export default function SendPage() {
               autoComplete="off"
               autoCorrect="off"
               spellCheck="false"
-              placeholder="Enter Solana address"
+              placeholder={t("recipientPlaceholder")}
               value={form.recipient}
               onChange={(e) =>
                 setForm((f) => ({ ...f, recipient: e.target.value.trim() }))
@@ -1632,6 +1694,12 @@ export default function SendPage() {
           )}
 
           {/* ── Submit button ── */}
+          {submitHint && (
+            <p className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-center text-[12px] leading-5 text-[#7a8faa]">
+              {submitHint}
+            </p>
+          )}
+
           <button
             type="button"
             onClick={() => void handlePrimaryAction()}
@@ -1665,7 +1733,7 @@ export default function SendPage() {
                     strokeLinejoin="round"
                   />
                 </svg>
-                {mode === "swap" ? "Swap" : (t("sendButton") ?? "Send")}
+                {mode === "swap" ? t("swapButton") : (t("sendButton") ?? "Send")}
               </>
             )}
           </button>
