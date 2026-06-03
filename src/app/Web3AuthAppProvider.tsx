@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Web3AuthProvider } from "@web3auth/modal/react";
+import { Web3AuthProvider, useWeb3Auth } from "@web3auth/modal/react";
 import { useSolanaWallet } from "@web3auth/modal/react/solana";
 import { web3AuthContextConfig } from "@/lib/web3auth";
 import { useWalletStore } from "@/stores/walletStore";
@@ -40,9 +47,43 @@ function clearCallbackHash() {
   );
 }
 
+async function getProviderAccount(provider: unknown): Promise<string | null> {
+  const request =
+    typeof provider === "object" &&
+    provider !== null &&
+    "request" in provider &&
+    typeof provider.request === "function"
+      ? provider.request.bind(provider)
+      : null;
+
+  if (!request) return null;
+
+  const methods = [
+    "getAccounts",
+    "solana_getAccounts",
+    "solana_requestAccounts",
+  ];
+
+  for (const method of methods) {
+    try {
+      const response = (await request({ method })) as unknown;
+      const [address] = Array.isArray(response) ? response : [];
+
+      if (typeof address === "string" && address.length > 20) {
+        return address;
+      }
+    } catch {
+      // Some providers only support a subset of account methods.
+    }
+  }
+
+  return null;
+}
+
 function Web3AuthSessionBridge({ children }: Web3AuthAppProviderProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { provider } = useWeb3Auth();
   const { accounts } = useSolanaWallet();
   const setWeb3AuthSession = useWalletStore((state) => state.setWeb3AuthSession);
   const setLoading = useWalletStore((state) => state.setLoading);
@@ -82,23 +123,49 @@ function Web3AuthSessionBridge({ children }: Web3AuthAppProviderProps) {
     };
   }, [setError, setLoading]);
 
+  const completeWeb3AuthLogin = useCallback(
+    (address: string) => {
+      if (callbackTimeoutRef.current) {
+        window.clearTimeout(callbackTimeoutRef.current);
+        callbackTimeoutRef.current = null;
+      }
+
+      setWeb3AuthSession(address, "web3auth");
+      setIsProcessingCallback(false);
+      clearCallbackHash();
+
+      if (pathname === `/${locale}` || hasWeb3AuthCallbackHash()) {
+        router.replace(`/${locale}/wallet`);
+      }
+    },
+    [locale, pathname, router, setWeb3AuthSession],
+  );
+
   useEffect(() => {
     const address = accounts?.[0];
     if (!address) return;
 
-    if (callbackTimeoutRef.current) {
-      window.clearTimeout(callbackTimeoutRef.current);
-      callbackTimeoutRef.current = null;
+    completeWeb3AuthLogin(address);
+  }, [accounts, completeWeb3AuthLogin]);
+
+  useEffect(() => {
+    if (!isProcessingCallback || accounts?.[0]) return;
+
+    let cancelled = false;
+
+    async function resolveProviderAccount() {
+      const address = await getProviderAccount(provider);
+      if (!cancelled && address) {
+        completeWeb3AuthLogin(address);
+      }
     }
 
-    setWeb3AuthSession(address, "web3auth");
-    setIsProcessingCallback(false);
-    clearCallbackHash();
+    void resolveProviderAccount();
 
-    if (pathname === `/${locale}` || hasWeb3AuthCallbackHash()) {
-      router.replace(`/${locale}/wallet`);
-    }
-  }, [accounts, locale, pathname, router, setWeb3AuthSession]);
+    return () => {
+      cancelled = true;
+    };
+  }, [accounts, completeWeb3AuthLogin, isProcessingCallback, provider]);
 
   useEffect(() => {
     if (connected && isProcessingCallback) {
