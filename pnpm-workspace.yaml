@@ -10,6 +10,9 @@ ignoredBuiltDependencies:
   - bigint-buffer
   - sharp
   - unrs-resolver
+overrides:
+  js-cookie: 3.0.8
+  ws: 8.21.0
 auditConfig:
   ignoreGhsas:
     - GHSA-qx2v-qp2m-jg93

@@ -110,6 +110,49 @@ function normalizeEnvValue(value: string | undefined): string | undefined {
   return hasWrappingQuotes ? trimmed.slice(1, -1).trim() : trimmed;
 }
 
+function normalizeOrigin(value: string | undefined): string | undefined {
+  const normalized = normalizeEnvValue(value);
+  if (!normalized) return undefined;
+
+  let url: URL;
+  try {
+    url = new URL(normalized);
+  } catch {
+    throw new Error("Invalid APP_ORIGIN configuration");
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("Invalid APP_ORIGIN configuration");
+  }
+
+  if (process.env.NODE_ENV === "production" && url.protocol !== "https:") {
+    throw new Error("APP_ORIGIN must use HTTPS in production");
+  }
+
+  if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+    throw new Error("APP_ORIGIN must be an origin without path, query, or hash");
+  }
+
+  return url.origin;
+}
+
+/**
+ * Trusted public origin used for security-sensitive absolute links.
+ *
+ * Never derive password reset links from Host/X-Forwarded-Host headers in
+ * production; those headers can be spoofed when proxy trust is misconfigured.
+ */
+export function getAppOrigin(developmentFallbackOrigin?: string): string {
+  const configuredOrigin = normalizeOrigin(process.env.APP_ORIGIN);
+  if (configuredOrigin) return configuredOrigin;
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Missing environment variable: APP_ORIGIN");
+  }
+
+  return normalizeOrigin(developmentFallbackOrigin) ?? "http://localhost:3000";
+}
+
 export function getSmtpConfig() {
   const host = normalizeEnvValue(process.env.SMTP_HOST);
   const port = normalizeEnvValue(process.env.SMTP_PORT);

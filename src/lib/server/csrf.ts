@@ -1,6 +1,6 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthSecret } from "@/lib/env";
+import { getAppOrigin, getAuthSecret } from "@/lib/env";
 
 export const CSRF_HEADER_NAME = "x-csrf-token";
 export const CSRF_COOKIE_NAME =
@@ -35,7 +35,11 @@ function isSameOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");
   if (!origin) return true;
 
-  return origin === request.nextUrl.origin;
+  try {
+    return origin === getAppOrigin(request.nextUrl.origin);
+  } catch {
+    return false;
+  }
 }
 
 function getRawCookieValue(request: NextRequest, name: string) {
@@ -124,10 +128,16 @@ export function verifyCsrfRequest(request: NextRequest) {
 
   if (!headerToken || !verifyCsrfToken(headerToken)) return false;
 
+  if (!cookieToken) {
+    return process.env.NODE_ENV !== "production";
+  }
+
   // Some in-app webviews can drop Secure cookies during local testing. The
-  // signed header token remains the CSRF gate; when the cookie arrives, also
-  // enforce double-submit equality.
-  if (cookieToken && !safeEqual(headerToken, cookieToken)) return false;
+  // signed header token remains the local CSRF gate. Production requires the
+  // HttpOnly cookie as a strict double-submit check for SameSite=None sessions.
+  if (!verifyCsrfToken(cookieToken) || !safeEqual(headerToken, cookieToken)) {
+    return false;
+  }
 
   return true;
 }

@@ -39,6 +39,7 @@ NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-secret
+APP_ORIGIN=https://your-vercel-domain.vercel.app
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/cyclos
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
@@ -51,7 +52,8 @@ Notes:
 
 - `NEXT_PUBLIC_WEB3AUTH_AUTH_CONNECTION_ID` is a legacy fallback. For direct Google/Email buttons, prefer the provider-specific Web3Auth Auth Connection IDs from Dashboard -> Auth Connections.
 - `TELEGRAM_BOT_TOKEN` is server-only. Never expose it with the `NEXT_PUBLIC_` prefix.
-- `DATABASE_URL`, `AUTH_SECRET`, and `SMTP_*` are server-only. They power email/password auth, verification codes, and password recovery.
+- `DATABASE_URL`, `AUTH_SECRET`, `APP_ORIGIN`, and `SMTP_*` are server-only. They power email/password auth, verification codes, and password recovery.
+- `APP_ORIGIN` must be the canonical HTTPS origin used by users. Password reset links fail closed in production if this is missing or invalid.
 - Gmail requires an app password for SMTP; do not use the normal mailbox password.
 - Use separate Web3Auth/Solana/TMA values for development, preview, and production where possible.
 
@@ -184,6 +186,7 @@ NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 NEXT_PUBLIC_ENVIRONMENT=production
 TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-secret
+APP_ORIGIN=https://your-vercel-domain.vercel.app
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/cyclos
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465

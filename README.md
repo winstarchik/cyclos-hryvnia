@@ -112,6 +112,7 @@ Before testing Google or external wallet auth:
 - SMTP mailbox or email provider for one-time login codes
 - Postgres `DATABASE_URL` for production account storage
 - Auth secret for signed HttpOnly session cookies
+- Canonical `APP_ORIGIN` for production password reset links
 - Web3Auth project/client id for Google and wallet login
 - Telegram bot for TMA launch
 
@@ -152,6 +153,7 @@ NEXT_PUBLIC_WEB3AUTH_EMAIL_GROUPED_AUTH_CONNECTION_ID=
 # Server-only values, never prefix with NEXT_PUBLIC_
 TELEGRAM_BOT_TOKEN=YOUR_TELEGRAM_BOT_TOKEN
 AUTH_SECRET=replace-with-a-long-random-secret
+APP_ORIGIN=http://localhost:3000
 DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/cyclos
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
@@ -164,7 +166,7 @@ NEXT_PUBLIC_ENVIRONMENT=production
 ANALYZE=false
 ```
 
-For Gmail SMTP, use a Google app password, not the mailbox password. Local development can run without `DATABASE_URL`; it uses `.data/cyclos-users.json`, which is ignored by git. Production must use Postgres.
+For Gmail SMTP, use a Google app password, not the mailbox password. Local development can run without `DATABASE_URL`; it uses `.data/cyclos-users.json`, which is ignored by git. Production must use Postgres and a canonical HTTPS `APP_ORIGIN`.
 
 ## Project Structure
 

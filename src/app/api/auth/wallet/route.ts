@@ -10,8 +10,30 @@ import { getSessionFromRequest } from "@/lib/server/session";
 
 export const runtime = "nodejs";
 
+const MAX_WALLET_CIPHERTEXT_BYTES = 4_096;
+const WALLET_IV_BYTES = 12;
+const WALLET_SALT_BYTES = 16;
+const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
+
 function authError(error: string, message: string, status: number) {
   return NextResponse.json({ status: "error", error, message }, { status });
+}
+
+function getBase64ByteLength(value: string, maxBytes: number) {
+  if (
+    value.length === 0 ||
+    value.length > Math.ceil(maxBytes / 3) * 4 ||
+    value.length % 4 !== 0 ||
+    !BASE64_PATTERN.test(value)
+  ) {
+    return null;
+  }
+
+  try {
+    return Buffer.from(value, "base64").byteLength;
+  } catch {
+    return null;
+  }
 }
 
 function isEncryptedWalletRecord(value: unknown): value is EncryptedWalletRecord {
@@ -33,7 +55,23 @@ function isEncryptedWalletRecord(value: unknown): value is EncryptedWalletRecord
 
   try {
     new PublicKey(wallet.publicKey);
-    return wallet.iterations >= 100_000 && wallet.iterations <= 1_000_000;
+    const cipherTextBytes = getBase64ByteLength(
+      wallet.cipherText,
+      MAX_WALLET_CIPHERTEXT_BYTES,
+    );
+    const ivBytes = getBase64ByteLength(wallet.iv, WALLET_IV_BYTES);
+    const saltBytes = getBase64ByteLength(wallet.salt, WALLET_SALT_BYTES);
+
+    return (
+      Number.isInteger(wallet.iterations) &&
+      wallet.iterations >= 100_000 &&
+      wallet.iterations <= 1_000_000 &&
+      cipherTextBytes !== null &&
+      cipherTextBytes >= 16 &&
+      cipherTextBytes <= MAX_WALLET_CIPHERTEXT_BYTES &&
+      ivBytes === WALLET_IV_BYTES &&
+      saltBytes === WALLET_SALT_BYTES
+    );
   } catch {
     return false;
   }

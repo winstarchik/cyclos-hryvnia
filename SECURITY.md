@@ -31,6 +31,7 @@ Server-only variables:
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_WEBHOOK_SECRET`
 - `AUTH_SECRET`
+- `APP_ORIGIN`
 - `ADMIN_API_SECRET`
 - `ADMIN_EMAIL`
 - `DATABASE_URL`
@@ -41,6 +42,8 @@ Server-only variables:
 - `SMTP_FROM`
 
 Never prefix private keys, bot tokens, database URLs, SMTP credentials, signing secrets, or webhook secrets with `NEXT_PUBLIC_`. Next.js embeds `NEXT_PUBLIC_` values into browser bundles.
+
+`APP_ORIGIN` must be the canonical HTTPS origin in production. Password reset links are built from this trusted value rather than request `Host` headers to prevent host-header poisoning and reset-token exfiltration.
 
 Local secrets belong in `.env.local`, which is ignored by git. Vercel secrets must be configured in Project Settings -> Environment Variables, scoped separately for Production, Preview, and Development.
 
@@ -61,6 +64,7 @@ Local secrets belong in `.env.local`, which is ignored by git. Vercel secrets mu
 - `POST /api/auth/register` verifies the signed OTP cookie, confirms matching passwords, hashes the password, and creates the user.
 - `POST /api/auth/login` verifies the signed OTP cookie and account password.
 - `POST /api/auth/password/forgot` sends a signed recovery link without revealing whether an email exists. Reset tokens are placed in the URL fragment (`#token=...`) so they are not sent in HTTP requests, Vercel route logs, or Referer headers.
+- Password recovery uses `APP_ORIGIN` for absolute reset links and fails closed in production if that origin is missing or not HTTPS.
 - `POST /api/auth/password/reset` verifies the signed recovery link, updates the stored password hash, and invalidates old reset links.
 - OTP, reset-token, password, and session checks use timing-safe comparisons where applicable.
 - Auth routes validate email/code/password shape before touching external services.
@@ -71,7 +75,7 @@ Local secrets belong in `.env.local`, which is ignored by git. Vercel secrets mu
 ## CSRF Protection
 
 - `GET /api/auth/csrf` issues a signed CSRF token and an HttpOnly `__Host-cyclos_csrf` cookie in production.
-- Mutating cookie-authenticated routes require `X-CSRF-Token` and a matching CSRF cookie.
+- Mutating cookie-authenticated routes require `X-CSRF-Token` and, in production, a matching CSRF cookie.
 - The server also rejects cross-origin mutating requests when the `Origin` header does not match the app origin.
 - This protects wallet-vault updates such as `PUT /api/auth/wallet` even while the session cookie uses `SameSite=None`.
 

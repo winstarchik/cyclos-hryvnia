@@ -58,11 +58,20 @@ function createTransporter() {
 
 function emailShell(content: string) {
   return `
-    <div style="font-family:Inter,Arial,sans-serif;background:#050712;color:#fff;padding:32px;border-radius:16px">
+    <div style="font-family:'Space Grotesk',sans-serif;background:#050712;color:#fff;padding:32px;border-radius:16px">
       <h1 style="margin:0 0 16px;font-size:24px">Cyclos Hryvnia</h1>
       ${content}
     </div>
   `;
+}
+
+function escapeHtmlAttribute(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 export async function sendAuthCodeEmail(
@@ -91,12 +100,13 @@ export async function sendAuthCodeEmail(
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   const smtp = getSmtpConfig();
+  const safeResetUrl = escapeHtmlAttribute(resetUrl);
 
   await createTransporter().sendMail({
     from: smtp.from,
     html: emailShell(`
       <p style="margin:0 0 20px;color:#c7d2fe">Use the secure link below to set a new password for your Cyclos account.</p>
-      <a href="${resetUrl}" style="display:inline-block;background:#0099ff;color:#fff;text-decoration:none;font-weight:700;border-radius:12px;padding:14px 20px">Reset password</a>
+      <a href="${safeResetUrl}" style="display:inline-block;background:#0099ff;color:#fff;text-decoration:none;font-weight:700;border-radius:12px;padding:14px 20px">Reset password</a>
       <p style="margin:20px 0 0;color:#94a3b8;font-size:14px">The link expires in 30 minutes. If you did not request it, ignore this email.</p>
     `),
     subject: "Reset your Cyclos password",

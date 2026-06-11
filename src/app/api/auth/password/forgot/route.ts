@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAppOrigin } from "@/lib/env";
 import { isValidAuthEmail, normalizeAuthEmail } from "@/lib/server/authInput";
 import { findUserByEmail } from "@/lib/server/accounts";
 import { sendPasswordResetEmail } from "@/lib/server/email";
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     if (user) {
       const resetToken = createPasswordResetToken(user);
-      const resetUrl = `${request.nextUrl.origin}/${locale}/reset-password#token=${encodeURIComponent(resetToken)}`;
+      const resetUrl = `${getAppOrigin(request.nextUrl.origin)}/${locale}/reset-password#token=${encodeURIComponent(resetToken)}`;
       await sendPasswordResetEmail(user.email, resetUrl);
     }
 
